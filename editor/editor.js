@@ -1,0 +1,927 @@
+// ─── EDITOR.JS ──────────────────────────────────────────────────────────────
+// On-page editing overlay for the portfolio site. Injected by editor/server.js
+// only — never part of the published site. All DOM the editor creates carries
+// a data-editor attribute and "ed-" class prefix, and is never written back
+// into CONTENT (commits store text values only).
+// ────────────────────────────────────────────────────────────────────────────
+
+(function () {
+  'use strict';
+
+  // Only run when served by the editor server (never from disk / the live site).
+  if (location.protocol === 'file:') return;
+  if (typeof CONTENT === 'undefined') return;
+
+  // ── State ─────────────────────────────────────────────────────────────────
+  // The working draft IS the global CONTENT object: render-projects.js and
+  // content-loader.js read the bare CONTENT binding, so mutating it keeps the
+  // page live. A pristine deep clone is kept for reference/reverts.
+  var draft = CONTENT;
+  var pristine = JSON.parse(JSON.stringify(CONTENT));
+  var unsaved = false;
+  var serverStatus = null;
+  var editing = null; // { el, path, prevValue, prevHTML, multiline }
+  var statusEl = null;
+  var statusDot = null;
+  var modalState = null; // { key } while photo manager is open
+  var suppressUnloadWarning = false;
+
+  var isHomePage = null; // resolved on init
+
+  // ── Small helpers ─────────────────────────────────────────────────────────
+  function getPath(obj, path) {
+    return path.split('.').reduce(function (cur, key) {
+      if (cur === undefined || cur === null) return undefined;
+      return cur[isNaN(key) ? key : Number(key)];
+    }, obj);
+  }
+
+  function setPath(obj, path, value) {
+    var parts = path.split('.');
+    var cur = obj;
+    for (var i = 0; i < parts.length - 1; i++) {
+      var k = Array.isArray(cur) ? Number(parts[i]) : parts[i];
+      if (cur[k] === undefined || cur[k] === null) {
+        cur[k] = /^\d+$/.test(parts[i + 1]) ? [] : {};
+      }
+      cur = cur[k];
+    }
+    var last = parts[parts.length - 1];
+    cur[Array.isArray(cur) ? Number(last) : last] = value;
+  }
+
+  function escapeHtml(s) {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  function pad2(n) { return (n < 10 ? '0' : '') + n; }
+
+  function make(tag, className, text) {
+    var node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text !== undefined) node.textContent = text;
+    node.setAttribute('data-editor', '');
+    return node;
+  }
+
+  function api(path, body) {
+    return fetch(path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body || {})
+    }).then(function (res) {
+      return res.json().catch(function () { return {}; }).then(function (data) {
+        return { ok: res.ok, status: res.status, data: data };
+      });
+    });
+  }
+
+  // ── Toasts ────────────────────────────────────────────────────────────────
+  var toastHost = null;
+  function toast(msg, type, ms) {
+    if (!toastHost) {
+      toastHost = make('div', 'ed-toasts');
+      document.body.appendChild(toastHost);
+    }
+    var t = make('div', 'ed-toast' + (type ? ' ed-toast-' + type : ''), msg);
+    toastHost.appendChild(t);
+    setTimeout(function () {
+      t.classList.add('ed-toast-out');
+      setTimeout(function () { t.remove(); }, 400);
+    }, ms || 3800);
+  }
+
+  // ── Status ────────────────────────────────────────────────────────────────
+  function markUnsaved() {
+    unsaved = true;
+    updateStatusText();
+  }
+
+  function refreshStatus() {
+    return fetch('/api/status').then(function (r) { return r.json(); })
+      .then(function (s) { serverStatus = s; updateStatusText(); })
+      .catch(function () { updateStatusText(); });
+  }
+
+  function updateStatusText() {
+    if (!statusEl) return;
+    var text, dotClass;
+    if (unsaved) {
+      text = 'Unsaved changes';
+      dotClass = 'ed-dot ed-dot-unsaved';
+    } else if (serverStatus && (serverStatus.dirty || serverStatus.aheadCount > 0)) {
+      text = 'Saved — not published yet';
+      dotClass = 'ed-dot ed-dot-unpublished';
+    } else {
+      text = 'All changes saved';
+      dotClass = 'ed-dot';
+    }
+    statusEl.textContent = text;
+    statusDot.className = dotClass;
+  }
+
+  // ── Save / Publish / Discard ──────────────────────────────────────────────
+  function save() {
+    if (editing) commitEdit();
+    return api('/api/content', draft).then(function (res) {
+      if (res.ok) {
+        unsaved = false;
+        toast('Saved', 'ok', 2200);
+        return refreshStatus();
+      }
+      toast('Could not save: ' + (res.data.error || 'unknown error'), 'error', 6000);
+    }).catch(function (e) {
+      toast('Could not save: ' + e.message, 'error', 6000);
+    });
+  }
+
+  function publish() {
+    if (editing) commitEdit();
+    if (!confirm('This will make your changes visible to everyone. Publish now?')) return;
+    var pre = unsaved ? save() : Promise.resolve();
+    pre.then(function () {
+      return api('/api/publish', {});
+    }).then(function (res) {
+      if (res.ok) {
+        refreshStatus().then(function () {
+          var when = serverStatus && serverStatus.lastPublish
+            ? new Date(serverStatus.lastPublish).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+            : '';
+          toast('Published! Your site is up to date' + (when ? ' (' + when + ')' : '') + '.', 'ok', 5000);
+        });
+      } else if (res.status === 409 && res.data.error === 'no-remote') {
+        toast('Publishing isn’t connected yet. Your changes are saved safely on this computer — once the site is connected to GitHub, Publish will put them online.', 'info', 9000);
+        refreshStatus();
+      } else if (res.status === 502 && res.data.error === 'push-failed') {
+        toast('Couldn’t reach the internet to publish. Your changes are safe on this computer — try Publish again later.', 'info', 9000);
+        refreshStatus();
+      } else {
+        toast('Publish failed: ' + (res.data.message || res.data.error || 'unknown error'), 'error', 7000);
+        refreshStatus();
+      }
+    }).catch(function (e) {
+      toast('Publish failed: ' + e.message, 'error', 6000);
+    });
+  }
+
+  function discard() {
+    if (!confirm('Throw away ALL unpublished changes and go back to the last published version?')) return;
+    api('/api/discard').then(function (res) {
+      if (res.ok) {
+        unsaved = false;
+        suppressUnloadWarning = true;
+        location.reload();
+      } else {
+        toast('Could not discard: ' + (res.data.error || 'unknown error'), 'error', 6000);
+      }
+    }).catch(function (e) {
+      toast('Could not discard: ' + e.message, 'error', 6000);
+    });
+  }
+
+  // ── Text editing ──────────────────────────────────────────────────────────
+  function isMultiline(path) {
+    var v = getPath(draft, path);
+    return typeof v === 'string' && /<br/i.test(v);
+  }
+
+  function startEdit(el) {
+    if (editing) {
+      if (editing.el === el) return;
+      commitEdit();
+    }
+    var path = el.getAttribute('data-content');
+    // Remove editor adornments (e.g. tag "×") so they never enter the text.
+    el.querySelectorAll('[data-editor]').forEach(function (n) { n.remove(); });
+    editing = {
+      el: el,
+      path: path,
+      prevValue: getPath(draft, path),
+      prevHTML: el.innerHTML,
+      multiline: isMultiline(path)
+    };
+    el.classList.add('ed-editing');
+    el.setAttribute('contenteditable', 'true');
+    el.focus();
+  }
+
+  function commitEdit() {
+    if (!editing) return;
+    var ed = editing;
+    // Read innerText while .ed-editing is still applied (it disables
+    // text-transform so uppercase-styled fields keep their real case).
+    var text = ed.el.innerText.replace(/\n+$/, '');
+    var value;
+    if (ed.multiline) {
+      value = text.split('\n').map(escapeHtml).join('<br>');
+    } else {
+      value = text.replace(/\s*\n\s*/g, ' ').trim();
+    }
+    var isTitle = /^projects\.[^.]+\.title$/.test(ed.path);
+    if (value === '' && isTitle) {
+      value = typeof ed.prevValue === 'string' ? ed.prevValue : '';
+      toast('A project needs a title — put the old one back.', 'info', 4000);
+    }
+    editing = null;
+    ed.el.classList.remove('ed-editing');
+    ed.el.removeAttribute('contenteditable');
+    // Update the display from the committed value.
+    if (typeof value === 'string' && value.indexOf('<') !== -1) {
+      ed.el.innerHTML = value;
+    } else {
+      ed.el.textContent = value;
+    }
+    setPath(draft, ed.path, value);
+    if (value !== ed.prevValue) markUnsaved();
+    enhance(); // re-add adornments stripped at edit start
+  }
+
+  function cancelEdit() {
+    if (!editing) return;
+    var ed = editing;
+    editing = null;
+    ed.el.classList.remove('ed-editing');
+    ed.el.removeAttribute('contenteditable');
+    ed.el.innerHTML = ed.prevHTML;
+    ed.el.blur();
+    enhance();
+  }
+
+  function setupEditable(el) {
+    if (el.dataset.edBound) return;
+    if (el.closest('[data-editor]')) return;
+    el.dataset.edBound = '1';
+    el.classList.add('ed-editable');
+    el.tabIndex = 0;
+
+    el.addEventListener('click', function (e) {
+      // Editable nav links / CTA buttons must not navigate in edit mode.
+      e.preventDefault();
+      e.stopPropagation();
+      if (editing && editing.el === el) return;
+      startEdit(el);
+    });
+
+    el.addEventListener('keydown', function (e) {
+      if (editing && editing.el === el) {
+        if (e.key === 'Enter' && !editing.multiline) {
+          e.preventDefault();
+          commitEdit();
+          el.blur();
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          e.stopPropagation();
+          cancelEdit();
+        }
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        startEdit(el);
+      }
+    });
+
+    el.addEventListener('blur', function () {
+      if (editing && editing.el === el) commitEdit();
+    });
+  }
+
+  function selectAllIn(el) {
+    var range = document.createRange();
+    range.selectNodeContents(el);
+    var sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+
+  // ── Re-render helper (preserves open read-more panels) ────────────────────
+  function rerender() {
+    var openIds = [];
+    document.querySelectorAll('#projects-container [id]').forEach(function (d) {
+      if (d.style.maxHeight && d.style.maxHeight !== '0px') openIds.push(d.id);
+    });
+    if (typeof window.renderProjects === 'function') window.renderProjects();
+    openIds.forEach(function (id) {
+      var d = document.getElementById(id);
+      if (!d) return;
+      var toggle = d.nextElementSibling;
+      d.style.maxHeight = 'none';
+      if (toggle) {
+        var label = toggle.querySelector('.btn-label');
+        var icon = toggle.querySelector('.btn-icon');
+        if (label) label.textContent = 'Read Less';
+        if (icon) icon.textContent = 'remove';
+      }
+    });
+    enhance();
+  }
+
+  function renumberProjects() {
+    var keys = Object.keys(draft.projects);
+    keys.forEach(function (k, i) { draft.projects[k].number = pad2(i + 1); });
+    draft.hero.count = pad2(keys.length) + ' Projects';
+    document.querySelectorAll('[data-content="hero.count"]').forEach(function (el) {
+      if (!editing || editing.el !== el) el.textContent = draft.hero.count;
+    });
+  }
+
+  function reorderKeys(keys) {
+    var next = {};
+    keys.forEach(function (k) { next[k] = draft.projects[k]; });
+    draft.projects = next;
+  }
+
+  // ── Tags ──────────────────────────────────────────────────────────────────
+  function adornTags() {
+    document.querySelectorAll('[data-role="tags"]').forEach(function (row) {
+      var section = row.closest('[data-project-key]');
+      if (!section) return;
+      var key = section.dataset.projectKey;
+
+      row.querySelectorAll('[data-content]').forEach(function (chip) {
+        chip.classList.add('ed-hostrel');
+        if (chip.querySelector('.ed-x')) return;
+        var x = make('button', 'ed-x', '×');
+        x.type = 'button';
+        x.title = 'Remove this tag';
+        x.addEventListener('click', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          var idx = Number(chip.getAttribute('data-content').split('.').pop());
+          draft.projects[key].tags.splice(idx, 1);
+          markUnsaved();
+          rerender();
+        });
+        chip.appendChild(x);
+      });
+
+      if (!row.querySelector('.ed-add-tag')) {
+        var add = make('button', 'ed-add-tag', '+ tag');
+        add.type = 'button';
+        add.title = 'Add a tag';
+        add.addEventListener('click', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          var tags = draft.projects[key].tags = draft.projects[key].tags || [];
+          tags.push('New Tag');
+          markUnsaved();
+          rerender();
+          var chip = document.querySelector(
+            '[data-content="projects.' + key + '.tags.' + (tags.length - 1) + '"]');
+          if (chip) { startEdit(chip); selectAllIn(chip); }
+        });
+        row.appendChild(add);
+      }
+    });
+  }
+
+  // ── Read-more paragraphs ──────────────────────────────────────────────────
+  function adornReadMore() {
+    document.querySelectorAll('[data-role="readmore"]').forEach(function (wrap) {
+      var section = wrap.closest('[data-project-key]');
+      if (!section) return;
+      var key = section.dataset.projectKey;
+
+      wrap.querySelectorAll('p[data-content]').forEach(function (p) {
+        p.classList.add('ed-hostrel');
+        if (p.querySelector('.ed-x')) return;
+        var x = make('button', 'ed-x', '×');
+        x.type = 'button';
+        x.title = 'Delete this paragraph';
+        x.addEventListener('click', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          var idx = Number(p.getAttribute('data-content').split('.').pop());
+          var current = draft.projects[key].readMore[idx] || '';
+          if (current.trim() !== '' && !confirm('Delete this paragraph?')) return;
+          draft.projects[key].readMore.splice(idx, 1);
+          markUnsaved();
+          rerender();
+        });
+        p.appendChild(x);
+      });
+
+      if (!wrap.querySelector('.ed-add-para')) {
+        var add = make('button', 'ed-add-para', '+ paragraph');
+        add.type = 'button';
+        add.title = 'Add a paragraph';
+        add.addEventListener('click', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          var arr = draft.projects[key].readMore = draft.projects[key].readMore || [];
+          arr.push('');
+          markUnsaved();
+          rerender();
+          var p = document.querySelector(
+            '[data-content="projects.' + key + '.readMore.' + (arr.length - 1) + '"]');
+          if (p) startEdit(p);
+        });
+        wrap.appendChild(add);
+      }
+    });
+  }
+
+  // ── Per-project move / delete controls ────────────────────────────────────
+  function adornProjectControls() {
+    var sections = document.querySelectorAll('[data-project-key]');
+    sections.forEach(function (section, i) {
+      var key = section.dataset.projectKey;
+      section.classList.add('ed-hostrel');
+      if (section.querySelector('.ed-proj-controls')) return;
+
+      var box = make('div', 'ed-proj-controls');
+
+      var up = make('button', '', '↑');
+      up.type = 'button';
+      up.title = 'Move this project up';
+      up.disabled = i === 0;
+      up.addEventListener('click', function () { moveProject(key, -1); });
+
+      var down = make('button', '', '↓');
+      down.type = 'button';
+      down.title = 'Move this project down';
+      down.disabled = i === sections.length - 1;
+      down.addEventListener('click', function () { moveProject(key, 1); });
+
+      var del = make('button', 'ed-proj-delete', '✕');
+      del.type = 'button';
+      del.title = 'Delete this project';
+      del.addEventListener('click', function () {
+        var title = draft.projects[key].title || key;
+        if (!confirm('Delete the project "' + title + '"? Its photos stay on this computer, but the project disappears from the site.')) return;
+        delete draft.projects[key];
+        renumberProjects();
+        markUnsaved();
+        rerender();
+        toast('Deleted "' + title + '"', 'ok');
+      });
+
+      box.appendChild(up);
+      box.appendChild(down);
+      box.appendChild(del);
+      section.appendChild(box);
+    });
+  }
+
+  function moveProject(key, dir) {
+    var keys = Object.keys(draft.projects);
+    var i = keys.indexOf(key);
+    var j = i + dir;
+    if (i === -1 || j < 0 || j >= keys.length) return;
+    var tmp = keys[i]; keys[i] = keys[j]; keys[j] = tmp;
+    reorderKeys(keys);
+    renumberProjects();
+    markUnsaved();
+    rerender();
+    var section = document.querySelector('[data-project-key="' + key + '"]');
+    if (section) section.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  // ── Add project ───────────────────────────────────────────────────────────
+  function addProject() {
+    var title = prompt('Name for the new project:');
+    if (title === null) return;
+    title = title.trim();
+    if (!title) { toast('The project needs a name.', 'info'); return; }
+
+    var slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '') || 'project';
+    var key = slug;
+    var n = 2;
+    while (Object.prototype.hasOwnProperty.call(draft.projects, key)) {
+      key = slug + n;
+      n += 1;
+    }
+
+    draft.projects[key] = {
+      number: '00',
+      tags: ['Design'],
+      title: title,
+      description: 'A short summary of this project.',
+      institution: '',
+      year: String(new Date().getFullYear()),
+      readMore: ['Tell the story of this project here.'],
+      imageAlt: title,
+      imageFit: 'object-cover',
+      images: []
+    };
+    renumberProjects();
+    markUnsaved();
+    rerender();
+    var section = document.querySelector('[data-project-key="' + key + '"]');
+    if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    toast('Added "' + title + '" — click its text to fill it in, and use Photos to add pictures.', 'ok', 5000);
+  }
+
+  // ── Photo manager ─────────────────────────────────────────────────────────
+  var photoInput = null;
+
+  function projectFolder(key) {
+    var images = draft.projects[key].images || [];
+    if (images.length > 0) {
+      var parts = images[0].split('/'); // assets/images/<folder>/<file>
+      if (parts.length >= 4 && parts[0] === 'assets' && parts[1] === 'images') {
+        return parts[2];
+      }
+    }
+    return key.replace(/[^a-zA-Z0-9._-]/g, '') || 'images';
+  }
+
+  function adornPhotoButtons() {
+    document.querySelectorAll('[data-role="image-frame"]').forEach(function (frame) {
+      var section = frame.closest('[data-project-key]');
+      if (!section) return;
+      var key = section.dataset.projectKey;
+      frame.classList.add('ed-hostrel', 'ed-frame-clickable');
+
+      if (!frame.querySelector('.ed-photos-btn')) {
+        var btn = make('button', 'ed-photos-btn', 'Photos');
+        btn.type = 'button';
+        btn.title = 'Add, remove, or reorder this project’s photos';
+        btn.addEventListener('click', function (e) {
+          e.stopPropagation();
+          openPhotoModal(key);
+        });
+        frame.appendChild(btn);
+      }
+
+      if (!frame.dataset.edPhotoClick) {
+        frame.dataset.edPhotoClick = '1';
+        frame.addEventListener('click', function (e) {
+          if (e.target.closest('[data-editor]')) return;
+          openPhotoModal(key);
+        });
+      }
+    });
+  }
+
+  function openPhotoModal(key) {
+    if (editing) commitEdit();
+    closePhotoModal();
+    modalState = { key: key };
+
+    var backdrop = make('div', 'ed-backdrop');
+    backdrop.id = 'ed-photo-modal';
+    backdrop.addEventListener('click', function (e) {
+      if (e.target === backdrop) closePhotoModal(true);
+    });
+
+    var modal = make('div', 'ed-modal');
+
+    var head = make('div', 'ed-modal-head');
+    var h = make('h3', '', 'Photos — ' + (draft.projects[key].title || key));
+    var close = make('button', 'ed-modal-close', '×');
+    close.type = 'button';
+    close.addEventListener('click', function () { closePhotoModal(true); });
+    head.appendChild(h);
+    head.appendChild(close);
+    modal.appendChild(head);
+
+    var grid = make('div', 'ed-photo-grid');
+    grid.id = 'ed-photo-grid';
+    modal.appendChild(grid);
+
+    var foot = make('div', 'ed-modal-foot');
+    var addBtn = make('button', 'ed-btn ed-btn-save', 'Add photos');
+    addBtn.type = 'button';
+    addBtn.id = 'ed-add-photos-btn';
+    addBtn.addEventListener('click', function () {
+      if (!photoInput) {
+        photoInput = document.createElement('input');
+        photoInput.type = 'file';
+        photoInput.multiple = true;
+        photoInput.accept = 'image/png,image/jpeg,image/webp';
+        photoInput.setAttribute('data-editor', '');
+        photoInput.style.display = 'none';
+        document.body.appendChild(photoInput);
+      }
+      photoInput.onchange = function () {
+        var files = Array.prototype.slice.call(photoInput.files || []);
+        photoInput.value = '';
+        if (files.length) uploadPhotos(key, files, addBtn);
+      };
+      photoInput.click();
+    });
+    var hint = make('span', 'ed-modal-hint', 'The first photo is the main one shown on the page.');
+    foot.appendChild(addBtn);
+    foot.appendChild(hint);
+    modal.appendChild(foot);
+
+    backdrop.appendChild(modal);
+    document.body.appendChild(backdrop);
+    renderPhotoGrid(key);
+  }
+
+  function renderPhotoGrid(key) {
+    var grid = document.getElementById('ed-photo-grid');
+    if (!grid) return;
+    grid.replaceChildren();
+    var images = draft.projects[key].images || [];
+
+    if (images.length === 0) {
+      grid.appendChild(make('div', 'ed-modal-hint', 'No photos yet — click "Add photos" to upload some.'));
+      return;
+    }
+
+    images.forEach(function (src, i) {
+      var cell = make('div', 'ed-photo-cell' + (i === 0 ? ' ed-photo-cell-main' : ''));
+
+      var wrapEl = make('div', 'ed-photo-thumb-wrap');
+      var img = document.createElement('img');
+      img.src = src;
+      img.alt = '';
+      wrapEl.appendChild(img);
+      if (i === 0) wrapEl.appendChild(make('span', 'ed-main-label', 'Main'));
+      cell.appendChild(wrapEl);
+
+      var actions = make('div', 'ed-photo-actions');
+
+      var left = make('button', '', '◀');
+      left.type = 'button';
+      left.title = 'Move earlier';
+      left.disabled = i === 0;
+      left.addEventListener('click', function () { movePhoto(key, i, -1); });
+
+      var right = make('button', '', '▶');
+      right.type = 'button';
+      right.title = 'Move later';
+      right.disabled = i === images.length - 1;
+      right.addEventListener('click', function () { movePhoto(key, i, 1); });
+
+      var main = make('button', 'ed-make-main', i === 0 ? 'Main photo' : 'Make main');
+      main.type = 'button';
+      main.disabled = i === 0;
+      main.addEventListener('click', function () {
+        var arr = draft.projects[key].images;
+        arr.unshift(arr.splice(i, 1)[0]);
+        markUnsaved();
+        renderPhotoGrid(key);
+      });
+
+      var del = make('button', 'ed-photo-del', '×');
+      del.type = 'button';
+      del.title = 'Remove this photo from the project';
+      del.addEventListener('click', function () {
+        var arr = draft.projects[key].images;
+        if (arr.length <= 1) {
+          toast('A project needs at least one photo.', 'info');
+          return;
+        }
+        arr.splice(i, 1);
+        markUnsaved();
+        renderPhotoGrid(key);
+      });
+
+      actions.appendChild(left);
+      actions.appendChild(right);
+      actions.appendChild(main);
+      actions.appendChild(del);
+      cell.appendChild(actions);
+      grid.appendChild(cell);
+    });
+  }
+
+  function movePhoto(key, i, dir) {
+    var arr = draft.projects[key].images;
+    var j = i + dir;
+    if (j < 0 || j >= arr.length) return;
+    var tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
+    markUnsaved();
+    renderPhotoGrid(key);
+  }
+
+  function closePhotoModal(applyChanges) {
+    var existing = document.getElementById('ed-photo-modal');
+    if (existing) existing.remove();
+    if (modalState && applyChanges) {
+      rerender();
+    }
+    modalState = null;
+  }
+
+  // ── Image upload pipeline ─────────────────────────────────────────────────
+  function processImageFile(file) {
+    return new Promise(function (resolve, reject) {
+      var keepPng = /\.png$/i.test(file.name) || file.type === 'image/png';
+      var url = URL.createObjectURL(file);
+      var img = new Image();
+      img.onload = function () {
+        URL.revokeObjectURL(url);
+        try {
+          var w = img.naturalWidth, h = img.naturalHeight;
+          var scale = Math.min(1, 2000 / Math.max(w, h));
+          w = Math.max(1, Math.round(w * scale));
+          h = Math.max(1, Math.round(h * scale));
+          var canvas = document.createElement('canvas');
+          canvas.width = w;
+          canvas.height = h;
+          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+          var dataUrl = keepPng
+            ? canvas.toDataURL('image/png')
+            : canvas.toDataURL('image/jpeg', 0.85);
+          resolve({ base64: dataUrl.split(',')[1], ext: keepPng ? '.png' : '.jpg' });
+        } catch (e) { reject(e); }
+      };
+      img.onerror = function () {
+        URL.revokeObjectURL(url);
+        reject(new Error('Could not read "' + file.name + '" as an image'));
+      };
+      img.src = url;
+    });
+  }
+
+  function safeBaseName(name) {
+    var base = name.replace(/\.[^.]*$/, '')
+      .replace(/[^a-zA-Z0-9._-]+/g, '-')
+      .replace(/^[.-]+/, '')
+      .slice(0, 60);
+    return base || 'photo';
+  }
+
+  function uploadPhotos(key, files, btn) {
+    var folder = projectFolder(key);
+    var origLabel = btn ? btn.textContent : '';
+    if (btn) { btn.disabled = true; btn.textContent = 'Uploading…'; }
+
+    var chain = Promise.resolve();
+    var okCount = 0;
+    files.forEach(function (file) {
+      chain = chain.then(function () {
+        return processImageFile(file).then(function (out) {
+          return api('/api/upload-image', {
+            folder: folder,
+            filename: safeBaseName(file.name) + out.ext,
+            data: out.base64
+          });
+        }).then(function (res) {
+          if (res.ok && res.data.path) {
+            draft.projects[key].images.push(res.data.path);
+            okCount += 1;
+            markUnsaved();
+          } else {
+            toast('Could not upload "' + file.name + '": ' + (res.data.error || 'unknown error'), 'error', 6000);
+          }
+        }).catch(function (e) {
+          toast('Could not upload "' + file.name + '": ' + e.message, 'error', 6000);
+        });
+      });
+    });
+
+    chain.then(function () {
+      if (btn) { btn.disabled = false; btn.textContent = origLabel; }
+      if (okCount > 0) toast('Added ' + okCount + ' photo' + (okCount === 1 ? '' : 's'), 'ok');
+      renderPhotoGrid(key);
+    });
+  }
+
+  // ── Profile photo (about page) ────────────────────────────────────────────
+  function setupProfilePhoto() {
+    var img = document.querySelector('[data-content-src="about.profilePhoto"]');
+    if (!img || img.dataset.edBound) return;
+    img.dataset.edBound = '1';
+    var holder = img.parentElement;
+    if (holder) holder.classList.add('ed-photo-clickable');
+
+    var input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/png,image/jpeg,image/webp';
+    input.setAttribute('data-editor', '');
+    input.style.display = 'none';
+    document.body.appendChild(input);
+
+    input.addEventListener('change', function () {
+      var file = input.files && input.files[0];
+      input.value = '';
+      if (!file) return;
+      toast('Uploading photo…', 'info', 2500);
+      processImageFile(file).then(function (out) {
+        return api('/api/upload-image', {
+          folder: 'profile',
+          filename: safeBaseName(file.name) + out.ext,
+          data: out.base64
+        });
+      }).then(function (res) {
+        if (res.ok && res.data.path) {
+          draft.about.profilePhoto = res.data.path;
+          img.src = res.data.path;
+          markUnsaved();
+          toast('Profile photo updated', 'ok');
+        } else {
+          toast('Could not upload the photo: ' + (res.data.error || 'unknown error'), 'error', 6000);
+        }
+      }).catch(function (e) {
+        toast('Could not upload the photo: ' + e.message, 'error', 6000);
+      });
+    });
+
+    img.addEventListener('click', function (e) {
+      e.preventDefault();
+      input.click();
+    });
+  }
+
+  // ── Enhance (idempotent; re-run after every render) ───────────────────────
+  function enhance() {
+    document.querySelectorAll('[data-content]').forEach(setupEditable);
+    adornTags();
+    adornReadMore();
+    adornProjectControls();
+    adornPhotoButtons();
+    setupProfilePhoto();
+  }
+
+  // ── Toolbar ───────────────────────────────────────────────────────────────
+  function buildToolbar() {
+    var bar = make('div', 'ed-toolbar');
+
+    bar.appendChild(make('span', 'ed-badge', 'EDITING'));
+
+    var pages = make('nav', 'ed-pages');
+    var page = location.pathname.replace(/\/$/, '/index.html');
+    [['Home', '/index.html'], ['About', '/about.html']].forEach(function (p) {
+      var a = make('a', page.indexOf(p[1]) !== -1 ? 'ed-current' : '', p[0]);
+      a.href = p[1];
+      pages.appendChild(a);
+    });
+    bar.appendChild(pages);
+
+    if (isHomePage) {
+      var add = make('button', 'ed-btn ed-btn-ghost', '+ Add project');
+      add.type = 'button';
+      add.id = 'ed-add-project';
+      add.addEventListener('click', addProject);
+      bar.appendChild(add);
+    }
+
+    var status = make('span', 'ed-status');
+    statusDot = make('span', 'ed-dot');
+    statusEl = make('span', '', 'All changes saved');
+    status.appendChild(statusDot);
+    status.appendChild(statusEl);
+    bar.appendChild(status);
+
+    var actions = make('div', 'ed-actions');
+    var saveBtn = make('button', 'ed-btn ed-btn-save', 'Save');
+    saveBtn.type = 'button';
+    saveBtn.id = 'ed-save';
+    saveBtn.addEventListener('click', function () { save(); });
+
+    var discardBtn = make('button', 'ed-btn ed-btn-ghost', 'Discard');
+    discardBtn.type = 'button';
+    discardBtn.id = 'ed-discard';
+    discardBtn.addEventListener('click', discard);
+
+    var publishBtn = make('button', 'ed-btn ed-btn-publish', 'Publish');
+    publishBtn.type = 'button';
+    publishBtn.id = 'ed-publish';
+    publishBtn.addEventListener('click', publish);
+
+    actions.appendChild(saveBtn);
+    actions.appendChild(discardBtn);
+    actions.appendChild(publishBtn);
+    bar.appendChild(actions);
+
+    document.body.appendChild(bar);
+  }
+
+  // ── Init ──────────────────────────────────────────────────────────────────
+  function init() {
+    isHomePage = !!document.getElementById('projects-container');
+    buildToolbar();
+    enhance();
+    refreshStatus();
+
+    document.addEventListener('keydown', function (e) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        save();
+      }
+      if (e.key === 'Escape' && !editing && document.getElementById('ed-photo-modal')) {
+        closePhotoModal(true);
+      }
+    });
+
+    window.addEventListener('beforeunload', function (e) {
+      if (unsaved && !suppressUnloadWarning) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    });
+  }
+
+  // This script is deferred, so it usually executes while readyState is
+  // 'interactive' — BEFORE DOMContentLoaded fires and before content-loader /
+  // render-projects (whose listeners registered earlier) have run. Wait for
+  // DOMContentLoaded so the page content is in place; the 'load' listener is
+  // a fallback for the window between DOMContentLoaded and full load.
+  var initialized = false;
+  function initOnce() {
+    if (initialized) return;
+    initialized = true;
+    init();
+  }
+  if (document.readyState === 'complete') {
+    initOnce();
+  } else {
+    document.addEventListener('DOMContentLoaded', initOnce);
+    window.addEventListener('load', initOnce);
+  }
+
+})();

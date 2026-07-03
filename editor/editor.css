@@ -1,0 +1,221 @@
+/* ─── EDITOR.CSS ─────────────────────────────────────────────────────────────
+   Chrome for the local on-page editor. Injected by editor/server.js only —
+   never part of the published site. Every class is prefixed "ed-".
+   ──────────────────────────────────────────────────────────────────────────── */
+
+:root {
+  --ed-red: #bb0018;
+  --ed-red-hover: #d40820;
+  --ed-dark: #161616;
+  --ed-dark-2: #262626;
+  --ed-text: #f2f2f2;
+  --ed-muted: #9c9c9c;
+  --ed-font: 'Inter Tight', 'Inter', -apple-system, sans-serif;
+}
+
+body { padding-bottom: 84px !important; }
+@media (max-width: 640px) { body { padding-bottom: 132px !important; } }
+
+/* ── Toolbar ─────────────────────────────────────────────────────────────── */
+.ed-toolbar {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 99990;
+  display: flex; align-items: center; flex-wrap: wrap; gap: 10px 16px;
+  padding: 12px 20px;
+  background: var(--ed-dark); color: var(--ed-text);
+  font-family: var(--ed-font); font-size: 13px;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
+}
+.ed-badge {
+  background: var(--ed-red); color: #fff; font-weight: 700;
+  letter-spacing: 0.16em; font-size: 10px; padding: 5px 9px;
+}
+.ed-pages { display: flex; gap: 2px; }
+.ed-pages a {
+  color: var(--ed-muted); text-decoration: none; padding: 6px 10px;
+  text-transform: uppercase; letter-spacing: 0.1em; font-size: 11px;
+}
+.ed-pages a:hover { color: #fff; }
+.ed-pages a.ed-current { color: #fff; box-shadow: inset 0 -2px 0 var(--ed-red); }
+
+.ed-status {
+  margin-left: auto; display: flex; align-items: center; gap: 8px;
+  color: var(--ed-muted); font-size: 12px; letter-spacing: 0.02em;
+}
+.ed-dot { width: 8px; height: 8px; border-radius: 50%; background: #3ecf6a; flex-shrink: 0; }
+.ed-dot-unsaved { background: #f5b93e; }
+.ed-dot-unpublished { background: #5ea8ff; }
+
+.ed-actions { display: flex; gap: 8px; }
+.ed-btn {
+  font-family: var(--ed-font); font-size: 11px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.12em;
+  padding: 9px 16px; border: 1px solid transparent; cursor: pointer;
+  background: var(--ed-dark-2); color: var(--ed-text);
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.ed-btn:hover { background: #333; }
+.ed-btn:disabled { opacity: 0.5; cursor: default; }
+.ed-btn-ghost { background: transparent; border-color: #3a3a3a; color: var(--ed-muted); }
+.ed-btn-ghost:hover { color: #fff; border-color: #666; background: transparent; }
+.ed-btn-save { background: #f2f2f2; color: #161616; }
+.ed-btn-save:hover { background: #fff; }
+.ed-btn-publish { background: var(--ed-red); color: #fff; }
+.ed-btn-publish:hover { background: var(--ed-red-hover); }
+
+/* ── Editable text ───────────────────────────────────────────────────────── */
+.ed-editable { cursor: text; }
+.ed-editable:hover,
+.ed-editable:focus-visible {
+  outline: 1.5px dashed var(--ed-red); outline-offset: 3px; border-radius: 1px;
+}
+.ed-editing,
+.ed-editing:hover {
+  outline: 2px solid var(--ed-red) !important; outline-offset: 3px;
+  text-transform: none !important; /* show real letter case while editing */
+  cursor: text; min-width: 1em;
+}
+.ed-editable:empty { min-width: 60px; min-height: 1em; display: inline-block; }
+.ed-editable:empty::before {
+  content: 'Click to edit'; color: #c0c0c0; font-style: italic;
+  text-transform: none; letter-spacing: normal;
+}
+.ed-editing:empty::before { content: ''; }
+
+/* ── Delete "×" bubbles (tags, paragraphs) ───────────────────────────────── */
+.ed-hostrel { position: relative; }
+.ed-x {
+  position: absolute; top: -9px; right: -9px; width: 18px; height: 18px;
+  display: none; align-items: center; justify-content: center;
+  background: var(--ed-dark); color: #fff; border: none; border-radius: 50%;
+  font-size: 12px; line-height: 1; cursor: pointer; padding: 0; z-index: 5;
+  font-family: var(--ed-font);
+}
+.ed-x:hover { background: var(--ed-red); }
+.ed-hostrel:hover > .ed-x { display: flex; }
+
+/* ── Ghost "+" chips / buttons ───────────────────────────────────────────── */
+.ed-add-tag, .ed-add-para {
+  font-family: var(--ed-font); font-size: 0.6875rem; letter-spacing: 0.1em;
+  text-transform: uppercase; cursor: pointer; background: transparent;
+}
+.ed-add-tag {
+  border: 1px dashed #c9c9c9; color: #9c9c9c; padding: 0.25rem 0.75rem;
+}
+.ed-add-tag:hover { border-color: var(--ed-red); color: var(--ed-red); }
+.ed-add-para {
+  border: 1px dashed #c9c9c9; color: #9c9c9c; padding: 6px 12px; display: inline-block;
+}
+.ed-add-para:hover { border-color: var(--ed-red); color: var(--ed-red); }
+
+/* ── Per-project floating controls ───────────────────────────────────────── */
+.ed-proj-controls {
+  position: absolute; top: 14px; right: 14px; z-index: 20;
+  display: flex; gap: 2px; background: var(--ed-dark); padding: 3px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+}
+.ed-proj-controls button {
+  background: transparent; border: none; color: #cfcfcf; cursor: pointer;
+  width: 28px; height: 26px; font-size: 13px; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--ed-font);
+}
+.ed-proj-controls button:hover { background: #333; color: #fff; }
+.ed-proj-controls button:disabled { opacity: 0.3; cursor: default; }
+.ed-proj-controls button.ed-proj-delete:hover { background: var(--ed-red); }
+
+/* ── Photos button on image frames ───────────────────────────────────────── */
+.ed-photos-btn {
+  position: absolute; bottom: 10px; right: 10px; z-index: 20;
+  background: var(--ed-dark); color: #fff; border: none; cursor: pointer;
+  font-family: var(--ed-font); font-size: 10px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.12em; padding: 8px 12px;
+  display: flex; align-items: center; gap: 6px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+}
+.ed-photos-btn:hover { background: var(--ed-red); }
+.ed-frame-clickable img { cursor: pointer; }
+.ed-photo-clickable { cursor: pointer; position: relative; }
+.ed-photo-clickable::after {
+  content: 'Click to replace photo'; position: absolute; left: 0; right: 0; bottom: 0;
+  background: rgba(22, 22, 22, 0.85); color: #fff; text-align: center;
+  font-family: var(--ed-font); font-size: 11px; text-transform: uppercase;
+  letter-spacing: 0.12em; padding: 10px; opacity: 0; transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+.ed-photo-clickable:hover::after { opacity: 1; }
+
+/* ── Photo manager modal ─────────────────────────────────────────────────── */
+.ed-backdrop {
+  position: fixed; inset: 0; z-index: 99995;
+  background: rgba(10, 10, 10, 0.6); display: flex;
+  align-items: center; justify-content: center; padding: 20px;
+}
+.ed-modal {
+  background: #fff; width: 100%; max-width: 760px; max-height: 86vh;
+  display: flex; flex-direction: column; font-family: var(--ed-font);
+  box-shadow: 0 16px 60px rgba(0, 0, 0, 0.4);
+}
+.ed-modal-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 20px; background: var(--ed-dark); color: #fff;
+}
+.ed-modal-head h3 {
+  margin: 0; font-size: 13px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.12em;
+}
+.ed-modal-close {
+  background: transparent; border: none; color: #cfcfcf; cursor: pointer;
+  font-size: 20px; line-height: 1; padding: 4px 8px;
+}
+.ed-modal-close:hover { color: #fff; }
+.ed-photo-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 14px; padding: 20px; overflow-y: auto;
+}
+.ed-photo-cell { border: 1px solid #e4e4e4; }
+.ed-photo-cell-main { border-color: var(--ed-red); }
+.ed-photo-thumb-wrap { position: relative; aspect-ratio: 4 / 3; background: #f3f3f4; }
+.ed-photo-thumb-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ed-main-label {
+  position: absolute; top: 6px; left: 6px; background: var(--ed-red); color: #fff;
+  font-size: 9px; font-weight: 700; letter-spacing: 0.14em; padding: 3px 7px;
+  text-transform: uppercase;
+}
+.ed-photo-actions {
+  display: flex; align-items: center; gap: 2px; padding: 6px;
+  border-top: 1px solid #eee;
+}
+.ed-photo-actions button {
+  background: #f3f3f4; border: none; cursor: pointer; color: #1a1c1c;
+  font-family: var(--ed-font); font-size: 11px; padding: 6px 8px; line-height: 1;
+}
+.ed-photo-actions button:hover { background: #e2e2e2; }
+.ed-photo-actions button:disabled { opacity: 0.35; cursor: default; }
+.ed-photo-actions .ed-make-main { flex: 1; font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; }
+.ed-photo-actions .ed-photo-del:hover { background: var(--ed-red); color: #fff; }
+.ed-modal-foot {
+  display: flex; align-items: center; gap: 14px; padding: 16px 20px;
+  border-top: 1px solid #eee;
+}
+.ed-modal-hint { color: #8a8a8a; font-size: 11px; }
+
+/* ── Toasts ──────────────────────────────────────────────────────────────── */
+.ed-toasts {
+  position: fixed; bottom: 76px; right: 20px; z-index: 99999;
+  display: flex; flex-direction: column; gap: 8px; align-items: flex-end;
+  pointer-events: none;
+}
+.ed-toast {
+  background: var(--ed-dark); color: #fff; font-family: var(--ed-font);
+  font-size: 13px; padding: 12px 18px; max-width: 380px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.3);
+  border-left: 3px solid #3ecf6a;
+  animation: ed-toast-in 0.2s ease;
+}
+.ed-toast-error { border-left-color: var(--ed-red); }
+.ed-toast-info { border-left-color: #5ea8ff; }
+@keyframes ed-toast-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.ed-toast-out { opacity: 0; transition: opacity 0.3s ease; }

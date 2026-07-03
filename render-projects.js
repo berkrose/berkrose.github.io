@@ -84,6 +84,15 @@
     const col = el("div", layout.imageColClass);
 
     const frame = el("div", layout.frameClass);
+    frame.dataset.role = "image-frame";
+
+    // No images yet — render the "Image Coming Soon" placeholder directly.
+    if (!project.images || project.images.length === 0) {
+      frame.appendChild(imagePlaceholder(layout.icon));
+      col.appendChild(frame);
+      return col;
+    }
+
     const img = document.createElement("img");
     img.id = "img-" + layout.idKey;
     img.src = project.images[0];
@@ -120,29 +129,39 @@
   function buildTextColumn(project, layout) {
     const col = el("div", layout.textColClass);
 
+    // Dot-path prefix for data-content stamps (lets the editor find each field).
+    const cp = "projects." + layout.key + ".";
+
+    function stamped(tag, className, text, contentPath) {
+      const node = el(tag, className, text);
+      node.setAttribute("data-content", contentPath);
+      return node;
+    }
+
     // Number badge + rule
     const numberRow = el("div", "flex items-center gap-4");
-    numberRow.appendChild(el("span", "text-xs font-headline font-bold text-secondary", project.number));
+    numberRow.appendChild(stamped("span", "text-xs font-headline font-bold text-secondary", project.number, cp + "number"));
     numberRow.appendChild(el("div", "h-[1px] flex-grow bg-outline-variant opacity-30"));
     col.appendChild(numberRow);
 
     // Tags, title, description
     const body = document.createElement("div");
     const tagRow = el("div", "flex flex-wrap gap-2 mb-4");
-    (project.tags || []).forEach(function (tag) {
-      tagRow.appendChild(el("span", "font-['Inter_Tight'] text-[0.6875rem] tracking-[0.1em] uppercase text-zinc-500 border border-zinc-200 px-3 py-1", tag));
+    tagRow.dataset.role = "tags";
+    (project.tags || []).forEach(function (tag, i) {
+      tagRow.appendChild(stamped("span", "font-['Inter_Tight'] text-[0.6875rem] tracking-[0.1em] uppercase text-zinc-500 border border-zinc-200 px-3 py-1", tag, cp + "tags." + i));
     });
     body.appendChild(tagRow);
-    body.appendChild(el("h2", "text-3xl md:text-4xl font-headline font-bold tracking-[-0.02em] mb-6", project.title));
-    body.appendChild(el("p", "text-sm text-on-surface-variant leading-relaxed max-w-md", project.description));
+    body.appendChild(stamped("h2", "text-3xl md:text-4xl font-headline font-bold tracking-[-0.02em] mb-6", project.title, cp + "title"));
+    body.appendChild(stamped("p", "text-sm text-on-surface-variant leading-relaxed max-w-md", project.description, cp + "description"));
     col.appendChild(body);
 
     // Institution + year
     const metaWrap = el("div", "pt-4");
     const metaRow = el("div", "flex items-center gap-3 text-zinc-400");
-    metaRow.appendChild(el("span", "font-['Inter_Tight'] text-[0.6875rem] tracking-[0.1em] uppercase", project.institution));
+    metaRow.appendChild(stamped("span", "font-['Inter_Tight'] text-[0.6875rem] tracking-[0.1em] uppercase", project.institution, cp + "institution"));
     metaRow.appendChild(el("span", "w-1 h-1 bg-zinc-300 rounded-full"));
-    metaRow.appendChild(el("span", "font-['Inter_Tight'] text-[0.6875rem] tracking-[0.1em] uppercase", project.year));
+    metaRow.appendChild(stamped("span", "font-['Inter_Tight'] text-[0.6875rem] tracking-[0.1em] uppercase", project.year, cp + "year"));
     metaWrap.appendChild(metaRow);
     col.appendChild(metaWrap);
 
@@ -152,8 +171,9 @@
     detail.style.maxHeight = "0";
     detail.style.transition = "max-height 0.5s ease";
     const detailInner = el("div", "pt-4 border-t border-outline-variant/20 space-y-4");
-    (project.readMore || []).forEach(function (paragraph) {
-      detailInner.appendChild(el("p", "text-sm text-on-surface-variant leading-relaxed", paragraph));
+    detailInner.dataset.role = "readmore";
+    (project.readMore || []).forEach(function (paragraph, i) {
+      detailInner.appendChild(stamped("p", "text-sm text-on-surface-variant leading-relaxed", paragraph, cp + "readMore." + i));
     });
     detail.appendChild(detailInner);
     col.appendChild(detail);
@@ -176,6 +196,7 @@
     const idKey = overrides.idKey || key;
 
     const layout = {
+      key: key,
       idKey: idKey,
       detailId: overrides.detailId || idKey + "-detail",
       icon: overrides.icon || "image",
@@ -190,6 +211,7 @@
     };
 
     const section = el("section", layout.sectionClass);
+    section.dataset.projectKey = key;
     const grid = el("div", layout.gridClass);
     const imageCol = buildImageColumn(project, layout);
     const textCol = buildTextColumn(project, layout);
@@ -204,12 +226,17 @@
     return section;
   }
 
-  document.addEventListener("DOMContentLoaded", function () {
+  function renderProjects() {
     const container = document.getElementById("projects-container");
     if (!container || typeof CONTENT === "undefined" || !CONTENT.projects) return;
+    container.replaceChildren();
     Object.keys(CONTENT.projects).forEach(function (key, index) {
       container.appendChild(buildSection(key, CONTENT.projects[key], index));
     });
-  });
+  }
+
+  window.renderProjects = renderProjects;
+
+  document.addEventListener("DOMContentLoaded", renderProjects);
 
 })();
