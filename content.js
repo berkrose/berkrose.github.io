@@ -217,7 +217,7 @@ const CONTENT = {
     "heading": "Engineering and Product Design",
     "profilePhoto": "assets/images/profile.jpeg",
     "bio": [
-      "I'm a Product Design graduate student at San Francisco State University with double degrees in Mechanical and Manufacturing Engineering from Oregon State University, where I graduated summa cum laude.",
+      "I'm a recent Product Design graduate student from San Francisco State University with double degrees in Mechanical and Manufacturing Engineering from Oregon State University, where I graduated summa cum laude.",
       "My background includes engineering internships at Oregon Freeze Dry, Blue Marble, and Bioskin, where I modeled complex liquid piping systems, designed motor housings for consumer goods, and performed failure analysis on prototypes to ensure mechanical reliability.",
       "I am currently working on designing community centered spaces that encourage exploration and play for all ages at Playful SF and leading the implementation of a new makerspace at the Mountain View Public Library.",
       "I have experience with the whole product development cycle from research and brainstorming, to prototyping and manufacturing."
