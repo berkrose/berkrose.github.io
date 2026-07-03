@@ -22,7 +22,9 @@ const CONTENT = {
 
   // ── Projects ─────────────────────────────────────────────────────────────────
   // Each project has: number, tags (list), title, description,
-  //                   institution, year, readMore (list of paragraphs)
+  //                   institution, year, imageAlt, imageFit,
+  //                   images (list of paths, main image first),
+  //                   readMore (list of paragraphs)
   projects: {
 
     nutrisync: {
@@ -32,6 +34,11 @@ const CONTENT = {
       description: "An automated add-on system that monitors and doses water and nutrients for small-scale consumer hydroponic gardens, removing the guesswork from home growing.",
       institution: "SF State University",
       year:        "2026",
+      imageAlt:    "NutriSync - automated hydroponic nutrient and water management system",
+      imageFit:    "object-cover",
+      images: [
+        "assets/images/hydroponic/main.png"
+      ],
       readMore: [
         "NutriSync is an automated add-on system that monitors and doses water and nutrients for small-scale consumer hydroponic gardens. A sensor pod reads the reservoir while a Raspberry Pi controller runs the pumps, removing the guesswork and the regular maintenance that most home hydroponic systems still require.",
         "The design grew out of a survey of hydroponic gardeners, interviews with experts in food growing, hardware engineering, and hydroponic retail, and contextual analysis of where gardens are placed in homes. It was developed through sketching, multiple rounds of CAD and physical prototyping, ongoing feedback from advisors and peers, and bench testing of the final working system. The project covered research, hardware, software, industrial design, and user interface design end to end."
@@ -45,6 +52,18 @@ const CONTENT = {
       description: "A full-suspension mountain bike built from recycled wood and carbon fiber composite, designed for Celilo Cycles as a six-month senior capstone project.",
       institution: "Oregon State University",
       year:        "2022",
+      imageAlt:    "Carbon fiber mountain bike with wooden frame in a forest setting",
+      imageFit:    "object-cover object-bottom",
+      images: [
+        "assets/images/bike/main.jpg",
+        "assets/images/bike/bike-01.jpg",
+        "assets/images/bike/bike-02.jpg",
+        "assets/images/bike/bike-03.jpeg",
+        "assets/images/bike/bike-04.jpg",
+        "assets/images/bike/bike-05.png",
+        "assets/images/bike/bike-06.jpg",
+        "assets/images/bike/bike-07.png"
+      ],
       readMore: [
         "For my senior capstone project, I worked with four engineering students over six months to design and build a full-suspension mountain bike using recycled wood and carbon fiber composite. The goal was to create a bike for Celilo Cycles that could handle rugged terrain while maintaining the aesthetics of a cross-country bike. We developed a design that optimized the frame geometry for performance and durability, which will be added to Celilo Cycles' product lineup.",
         "My role included researching and determining the frame geometry, creating a cardboard prototype, and building the initial wooden prototype. I also contributed to refining the second wooden prototype, 3D-printing small components for accurate sizing, and assisting with project reports. Our team CNC-milled the wooden frame, laid up carbon fiber, and assembled the bike, producing two final prototypes tested for safety and performance.",
@@ -59,6 +78,12 @@ const CONTENT = {
       description: "A large-scale interlocking building system designed for PlayfulSF to bring unstructured, collaborative play to urban spaces.",
       institution: "PlayfulSF",
       year:        "2025",
+      imageAlt:    "Interlock Building Blocks - large-scale colorful geometric sculpture with human-scale forms",
+      imageFit:    "object-cover",
+      images: [
+        "assets/images/interlock/main.png",
+        "assets/images/interlock/interlock-01.png"
+      ],
       readMore: [
         "I designed a large-scale building system for PlayfulSF to reintroduce unstructured play into the urban landscape. The system uses life-sized, interlocking components that invite collaborative play at any age.",
         "From initial ideation and sketching to final 3D modeling, I developed a kit of parts that balances geometric simplicity with structural integrity. The result is a tactile, ever-changing installation that invites passersby to stop and collaborate on large-scale sculptures."
@@ -72,6 +97,15 @@ const CONTENT = {
       description: "A sound-reactive dancing robot that responds to music in real time using FFT beat detection, servo motors, and dynamic LED patterns.",
       institution: "Oregon State University",
       year:        "2021",
+      imageAlt:    "Rhythm Robot - sound-reactive dancing robot with Arduino and servo motors",
+      imageFit:    "object-contain",
+      images: [
+        "assets/images/robot/main.png",
+        "assets/images/robot/robot-01.jpg",
+        "assets/images/robot/robot-02.png",
+        "assets/images/robot/robot-03.png",
+        "assets/images/robot/robot-04.png"
+      ],
       readMore: [
         "I built a sound-reactive dancing robot at Oregon State University that responds to music in real time. Using FFT beat detection, servo motors, and dynamic LED patterns, the robot translates amplitude and frequency into movement and light.",
         "The robot used a SparkFun Sound Detector to measure sound amplitude and frequency, triggering changes in LED colors, flashing patterns, and dance movements via four servo motors. I implemented a fast Fourier transform (FFT) function using EasyFFT to filter noise, detect beats, and identify common frequencies.",
@@ -86,6 +120,13 @@ const CONTENT = {
       description: "A nightstand designed for busy parents, combining touch-controlled lighting, motion-activated floor lights, and child-safe rounded edges.",
       institution: "SF State University",
       year:        "2024",
+      imageAlt:    "Lumaire Nightstand - 3D render of glowing nightstand beside a bed",
+      imageFit:    "object-cover",
+      images: [
+        "assets/images/lumaire/main.png",
+        "assets/images/lumaire/lumaire-01.png",
+        "assets/images/lumaire/lumaire-02.png"
+      ],
       readMore: [
         "The Lumaire Nightstand was designed to meet the needs of a busy parent caring for a young child. The design aimed to address common challenges like clutter, harsh lighting, and safety concerns while providing functional and user-friendly features.",
         "To meet these needs, I designed the nightstand with touch-controlled LED lights for adjustable brightness, making it easy to operate without disturbing sleep. The motion-activated floor lights provide illumination for nighttime movement, reducing the risk of accidents. The smooth, rounded edges ensure safety for children, while soft-close drawers prevent noise during use. A spacious top surface accommodates essential items like phones and watches, and the enclosed storage keeps the area organized and clutter-free."
@@ -99,6 +140,12 @@ const CONTENT = {
       description: "A housing and motor mount designed during my internship at Blue Marble, validated with an SLA 3D-printed prototype.",
       institution: "Blue Marble - Internship",
       year:        "2022",
+      imageAlt:    "Rock tumbler motor mount - SLA 3D printed prototype designed at Blue Marble internship",
+      imageFit:    "object-cover",
+      images: [
+        "assets/images/tumbler/main.png",
+        "assets/images/tumbler/tumbler-01.jpg"
+      ],
       readMore: [
         "During my internship at Blue Marble, I designed the housing and motor mount for a tumbler assembly, ensuring the design met specific guidelines and measurements. After completing the design, I created a prototype using a stereolithography (SLA) 3D printer."
       ]
@@ -111,6 +158,14 @@ const CONTENT = {
       description: "A combination air purifier and dehumidifier with a whimsical cloud form and transparent water container.",
       institution: "SF State University",
       year:        "2024",
+      imageAlt:    "CloudAir One - whimsical cloud-shaped air purifier and dehumidifier with transparent water base",
+      imageFit:    "object-contain",
+      images: [
+        "assets/images/cloudair/main.png",
+        "assets/images/cloudair/cloudair-01.png",
+        "assets/images/cloudair/cloudair-02.png",
+        "assets/images/cloudair/cloudair-03.png"
+      ],
       readMore: [
         "The CloudAir One is a combination air purifier and dehumidifier designed with a whimsical cloud form. Its transparent water container lets users watch the dehumidification process in action as droplets collect and fall.",
         "Air is drawn in through the top, purified through a HEPA filter, then dehumidified and released through the base of the cloud. The top cloud section fits easily into the base, making it simple to remove and empty the water."
@@ -124,6 +179,14 @@ const CONTENT = {
       description: "An educational toy for children during COVID-19 - 3D-printed interlocking plant parts that teach botany through hands-on assembly.",
       institution: "Oregon State University",
       year:        "2020",
+      imageAlt:    "Create-A-Plant - 3D printed interlocking educational plant toy",
+      imageFit:    "object-contain",
+      images: [
+        "assets/images/createaplant/main.png",
+        "assets/images/createaplant/createaplant-01.jpg",
+        "assets/images/createaplant/createaplant-02.png",
+        "assets/images/createaplant/createaplant-03.jpg"
+      ],
       readMore: [
         "I worked with three classmates to create Create-A-Plant, an educational toy designed for children during the COVID-19 quarantine. The goal was to make a toy that could be built at home for under $25 while being engaging and educational. Create-A-Plant consists of 3D-printed plant parts that children can assemble, with leaves and flowers that interlock with stems and a pot base. Each part is labeled with its name to help children learn about plants. The prototype was made with PLA and ABS plastic and cost $12.64 to produce.",
         "I contributed to all stages of development, including researching social, economic, and technical (SET) factors, identifying stakeholders, and defining customer requirements and engineering specifications. To understand needs, I interviewed two families and used their feedback to shape the product. My idea for Create-A-Plant was selected through team brainstorming and set-based design. I sketched initial concepts, modeled the pot and stems, and used 3D printing to produce the final prototype."
