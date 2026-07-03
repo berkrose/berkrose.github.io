@@ -1,6 +1,6 @@
 // ─── EDITOR.JS ──────────────────────────────────────────────────────────────
 // On-page editing overlay for the portfolio site. Injected by editor/server.js
-// only — never part of the published site. All DOM the editor creates carries
+// only - never part of the published site. All DOM the editor creates carries
 // a data-editor attribute and "ed-" class prefix, and is never written back
 // into CONTENT (commits store text values only).
 // ────────────────────────────────────────────────────────────────────────────
@@ -110,7 +110,7 @@
       text = 'Unsaved changes';
       dotClass = 'ed-dot ed-dot-unsaved';
     } else if (serverStatus && (serverStatus.dirty || serverStatus.aheadCount > 0)) {
-      text = 'Saved — not published yet';
+      text = 'Saved - not published yet';
       dotClass = 'ed-dot ed-dot-unpublished';
     } else {
       text = 'All changes saved';
@@ -150,10 +150,10 @@
           toast('Published! Your site is up to date' + (when ? ' (' + when + ')' : '') + '.', 'ok', 5000);
         });
       } else if (res.status === 409 && res.data.error === 'no-remote') {
-        toast('Publishing isn’t connected yet. Your changes are saved safely on this computer — once the site is connected to GitHub, Publish will put them online.', 'info', 9000);
+        toast('Publishing isn’t connected yet. Your changes are saved safely on this computer - once the site is connected to GitHub, Publish will put them online.', 'info', 9000);
         refreshStatus();
       } else if (res.status === 502 && res.data.error === 'push-failed') {
-        toast('Couldn’t reach the internet to publish. Your changes are safe on this computer — try Publish again later.', 'info', 9000);
+        toast('Couldn’t reach the internet to publish. Your changes are safe on this computer - try Publish again later.', 'info', 9000);
         refreshStatus();
       } else {
         toast('Publish failed: ' + (res.data.message || res.data.error || 'unknown error'), 'error', 7000);
@@ -220,7 +220,7 @@
     var isTitle = /^projects\.[^.]+\.title$/.test(ed.path);
     if (value === '' && isTitle) {
       value = typeof ed.prevValue === 'string' ? ed.prevValue : '';
-      toast('A project needs a title — put the old one back.', 'info', 4000);
+      toast('A project needs a title - put the old one back.', 'info', 4000);
     }
     editing = null;
     ed.el.classList.remove('ed-editing');
@@ -507,7 +507,7 @@
     rerender();
     var section = document.querySelector('[data-project-key="' + key + '"]');
     if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    toast('Added "' + title + '" — click its text to fill it in, and use Photos to add pictures.', 'ok', 5000);
+    toast('Added "' + title + '" - click its text to fill it in, and use Photos to add pictures.', 'ok', 5000);
   }
 
   // ── Photo manager ─────────────────────────────────────────────────────────
@@ -566,7 +566,7 @@
     var modal = make('div', 'ed-modal');
 
     var head = make('div', 'ed-modal-head');
-    var h = make('h3', '', 'Photos — ' + (draft.projects[key].title || key));
+    var h = make('h3', '', 'Photos - ' + (draft.projects[key].title || key));
     var close = make('button', 'ed-modal-close', '×');
     close.type = 'button';
     close.addEventListener('click', function () { closePhotoModal(true); });
@@ -616,7 +616,7 @@
     var images = draft.projects[key].images || [];
 
     if (images.length === 0) {
-      grid.appendChild(make('div', 'ed-modal-hint', 'No photos yet — click "Add photos" to upload some.'));
+      grid.appendChild(make('div', 'ed-modal-hint', 'No photos yet - click "Add photos" to upload some.'));
       return;
     }
 
@@ -907,7 +907,7 @@
   }
 
   // This script is deferred, so it usually executes while readyState is
-  // 'interactive' — BEFORE DOMContentLoaded fires and before content-loader /
+  // 'interactive' - BEFORE DOMContentLoaded fires and before content-loader /
   // render-projects (whose listeners registered earlier) have run. Wait for
   // DOMContentLoaded so the page content is in place; the 'load' listener is
   // a fallback for the window between DOMContentLoaded and full load.
