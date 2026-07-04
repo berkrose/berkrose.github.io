@@ -51,6 +51,29 @@ body { padding-bottom: 84px !important; }
   letter-spacing: 0; font-weight: 400;
 }
 
+/* ── Font-size mini-toolbar (floats above the field being edited) ─────────── */
+.ed-size-bar {
+  position: fixed; z-index: 2147483646;
+  display: flex; align-items: center; gap: 2px;
+  background: var(--ed-dark); border: 1px solid #3a3a3a;
+  border-radius: 6px; padding: 3px; box-shadow: 0 6px 20px rgba(0,0,0,0.28);
+}
+.ed-size-btn {
+  font-family: var(--ed-font); font-size: 12px; font-weight: 600;
+  color: var(--ed-text); background: transparent; border: none;
+  padding: 5px 9px; cursor: pointer; border-radius: 4px; line-height: 1;
+}
+.ed-size-btn:hover { background: #333; }
+.ed-size-btn:disabled { opacity: 0.4; cursor: default; background: transparent; }
+.ed-size-reset {
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--ed-muted); margin-left: 2px;
+}
+.ed-size-readout {
+  font-family: var(--ed-font); font-size: 11px; color: var(--ed-muted);
+  min-width: 40px; text-align: center; user-select: none;
+}
+
 .ed-actions { display: flex; gap: 8px; }
 .ed-btn {
   font-family: var(--ed-font); font-size: 11px; font-weight: 600;

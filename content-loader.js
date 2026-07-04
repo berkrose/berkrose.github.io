@@ -12,17 +12,40 @@
     }, obj);
   }
 
+  // Apply a per-element font-size override (CONTENT.styles[path].fontScale) by
+  // wrapping the element's children in an inner span sized in em. Using em on an
+  // inner span keeps responsive Tailwind sizes (e.g. text-3xl md:text-4xl) intact,
+  // because the em resolves against the element's own breakpoint-aware size.
+  function applyTextScale(el, path) {
+    var scale = (typeof CONTENT !== 'undefined' && CONTENT.styles && CONTENT.styles[path])
+      ? CONTENT.styles[path].fontScale : null;
+    var wrap = el.querySelector(':scope > .txt-scale');
+    if (!scale || scale === 1) {
+      if (wrap) { while (wrap.firstChild) el.insertBefore(wrap.firstChild, wrap); wrap.remove(); }
+      return;
+    }
+    if (!wrap) {
+      wrap = document.createElement('span');
+      wrap.className = 'txt-scale';
+      while (el.firstChild) wrap.appendChild(el.firstChild);
+      el.appendChild(wrap);
+    }
+    wrap.style.fontSize = scale + 'em';
+  }
+
   function applyContent() {
     if (typeof CONTENT === 'undefined') return;
 
     document.querySelectorAll('[data-content]').forEach(function (el) {
-      var value = resolve(CONTENT, el.getAttribute('data-content'));
+      var path = el.getAttribute('data-content');
+      var value = resolve(CONTENT, path);
       if (value === undefined || value === null) return; // safe fallback — keep existing text
       if (typeof value === 'string' && value.indexOf('<') !== -1) {
         el.innerHTML = value;  // use innerHTML for strings containing HTML tags (e.g. <br>)
       } else {
         el.textContent = String(value);
       }
+      applyTextScale(el, path);
     });
 
     document.querySelectorAll('[data-content-src]').forEach(function (el) {
@@ -34,6 +57,7 @@
   }
 
   window.applyContent = applyContent;
+  window.applyTextScale = applyTextScale;
 
   document.addEventListener('DOMContentLoaded', applyContent);
 

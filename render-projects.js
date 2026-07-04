@@ -135,6 +135,7 @@
     function stamped(tag, className, text, contentPath) {
       const node = el(tag, className, text);
       node.setAttribute("data-content", contentPath);
+      if (window.applyTextScale) window.applyTextScale(node, contentPath);
       return node;
     }
 

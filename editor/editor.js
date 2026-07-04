@@ -259,16 +259,26 @@
     var path = el.getAttribute('data-content');
     // Remove editor adornments (e.g. tag "×") so they never enter the text.
     el.querySelectorAll('[data-editor]').forEach(function (n) { n.remove(); });
+    // Unwrap any font-scale span so editing operates on plain inline content;
+    // the persistent wrapper is re-applied on commit/cancel via applyTextScale.
+    var wrap = el.querySelector(':scope > .txt-scale');
+    if (wrap) { while (wrap.firstChild) el.insertBefore(wrap.firstChild, wrap); wrap.remove(); }
+    var scale = (draft.styles && draft.styles[path] && draft.styles[path].fontScale) || 1;
     editing = {
       el: el,
       path: path,
       prevValue: getPath(draft, path),
       prevHTML: el.innerHTML,
-      multiline: isMultiline(path)
+      multiline: isMultiline(path),
+      scale: scale,
+      basePx: parseFloat(getComputedStyle(el).fontSize) || 16
     };
     el.classList.add('ed-editing');
     el.setAttribute('contenteditable', 'true');
     el.focus();
+    // Transient live preview of the current scale (absolute px, current viewport).
+    if (scale !== 1) el.style.fontSize = (editing.basePx * scale) + 'px';
+    showSizeBar(el);
   }
 
   function commitEdit() {
@@ -289,8 +299,10 @@
       toast('A project needs a title - put the old one back.', 'info', 4000);
     }
     editing = null;
+    hideSizeBar();
     ed.el.classList.remove('ed-editing');
     ed.el.removeAttribute('contenteditable');
+    ed.el.style.removeProperty('font-size'); // clear transient preview
     // Update the display from the committed value.
     if (typeof value === 'string' && value.indexOf('<') !== -1) {
       ed.el.innerHTML = value;
@@ -299,6 +311,8 @@
     }
     if (value !== ed.prevValue) pushHistory();
     setPath(draft, ed.path, value);
+    // Realize the persistent responsive font-scale wrapper from draft.styles.
+    if (window.applyTextScale) window.applyTextScale(ed.el, ed.path);
     if (value !== ed.prevValue) markUnsaved();
     enhance(); // re-add adornments stripped at edit start
   }
@@ -307,11 +321,95 @@
     if (!editing) return;
     var ed = editing;
     editing = null;
+    hideSizeBar();
     ed.el.classList.remove('ed-editing');
     ed.el.removeAttribute('contenteditable');
-    ed.el.innerHTML = ed.prevHTML;
+    ed.el.style.removeProperty('font-size'); // clear transient preview
+    ed.el.innerHTML = ed.prevHTML; // unwrapped content captured at edit start
+    // Any size changes made during this edit persist (their own history steps);
+    // re-apply the wrapper from the current draft.styles.
+    if (window.applyTextScale) window.applyTextScale(ed.el, ed.path);
     ed.el.blur();
     enhance();
+  }
+
+  // ── Font-size mini-toolbar (shown while editing a text field) ───────────────
+  var sizeBar = null;
+
+  function showSizeBar(el) {
+    hideSizeBar();
+    sizeBar = make('div', 'ed-size-bar');
+    var minus = make('button', 'ed-size-btn', 'A−');
+    var readout = make('span', 'ed-size-readout', Math.round(editing.scale * 100) + '%');
+    var plus = make('button', 'ed-size-btn', 'A+');
+    var reset = make('button', 'ed-size-btn ed-size-reset', 'reset');
+    [minus, plus, reset].forEach(function (b) { b.type = 'button'; });
+
+    // mousedown + preventDefault keeps focus in the field (no blur -> no commit).
+    function guard(fn) {
+      return function (e) { e.preventDefault(); e.stopPropagation(); fn(); };
+    }
+    minus.addEventListener('mousedown', guard(function () { changeSize(-0.1, readout); }));
+    plus.addEventListener('mousedown', guard(function () { changeSize(0.1, readout); }));
+    reset.addEventListener('mousedown', guard(function () { resetSize(readout); }));
+
+    sizeBar.appendChild(minus);
+    sizeBar.appendChild(readout);
+    sizeBar.appendChild(plus);
+    sizeBar.appendChild(reset);
+    document.body.appendChild(sizeBar);
+    sizeBar._minus = minus;
+    sizeBar._plus = plus;
+    positionSizeBar(el);
+    updateSizeBounds();
+  }
+
+  function positionSizeBar(el) {
+    if (!sizeBar) return;
+    var r = el.getBoundingClientRect();
+    var top = r.top - 42;
+    if (top < 8) top = r.bottom + 8;
+    var left = Math.max(8, Math.min(r.left, window.innerWidth - 210));
+    sizeBar.style.top = top + 'px';
+    sizeBar.style.left = left + 'px';
+  }
+
+  function updateSizeBounds() {
+    if (!sizeBar || !editing) return;
+    if (sizeBar._minus) sizeBar._minus.disabled = editing.scale <= 0.5;
+    if (sizeBar._plus) sizeBar._plus.disabled = editing.scale >= 2.0;
+  }
+
+  function changeSize(delta, readout) {
+    if (!editing) return;
+    var next = Math.round((editing.scale + delta) * 10) / 10;
+    next = Math.max(0.5, Math.min(2.0, next));
+    if (next === editing.scale) return;
+    pushHistory();
+    editing.scale = next;
+    draft.styles = draft.styles || {};
+    if (next === 1) delete draft.styles[editing.path];
+    else draft.styles[editing.path] = { fontScale: next };
+    if (next === 1) editing.el.style.removeProperty('font-size');
+    else editing.el.style.fontSize = (editing.basePx * next) + 'px';
+    if (readout) readout.textContent = Math.round(next * 100) + '%';
+    markUnsaved();
+    updateSizeBounds();
+  }
+
+  function resetSize(readout) {
+    if (!editing || editing.scale === 1) return;
+    pushHistory();
+    editing.scale = 1;
+    if (draft.styles) delete draft.styles[editing.path];
+    editing.el.style.removeProperty('font-size');
+    if (readout) readout.textContent = '100%';
+    markUnsaved();
+    updateSizeBounds();
+  }
+
+  function hideSizeBar() {
+    if (sizeBar) { sizeBar.remove(); sizeBar = null; }
   }
 
   function setupEditable(el) {
