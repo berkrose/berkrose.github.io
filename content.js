@@ -26,7 +26,9 @@ const CONTENT = {
       "imageAlt": "NutriSync - automated hydroponic nutrient and water management system",
       "imageFit": "object-cover",
       "images": [
-        "assets/images/hydroponic/main.png"
+        "assets/images/hydroponic/FinalWithGardenLongBright.png",
+        "assets/images/hydroponic/ExplodedFinal3Bright.png",
+        "assets/images/hydroponic/TwoSizesFinal2larger2.png"
       ],
       "readMore": [
         "NutriSync is an automated add-on system that monitors and doses water and nutrients for small-scale consumer hydroponic gardens. A sensor pod reads the reservoir while a Raspberry Pi controller runs the pumps, removing the guesswork and the regular maintenance that most home hydroponic systems still require.",
