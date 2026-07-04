@@ -223,7 +223,7 @@ const CONTENT = {
       "I have experience with the whole product development cycle from research and brainstorming, to prototyping and manufacturing."
     ],
     "contactHeading": "Contact & Resources",
-    "location": "San Francisco, CA",
+    "location": "Mountain View, CA",
     "degree": "MS Product Design",
     "expertise": {
       "engineering": {
