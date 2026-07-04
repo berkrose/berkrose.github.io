@@ -26,6 +26,17 @@ only appears in the editor — visitors never see it.
 Hover any text — it gets a dashed red outline. Click it, type your change, then click
 away (or press **Enter**) to keep it. Press **Esc** to cancel.
 
+### Text size
+While you're editing a piece of text, a small bar appears just above it with
+**A− / A+ / reset**. Use **A+** to make that text bigger, **A−** to make it smaller,
+and **reset** to return to the original size. Each piece of text is sized on its own,
+and everything still shrinks correctly on phones.
+
+### Undo and redo
+Made a change you didn't mean to? Use the **↺** (undo) and **↻** (redo) buttons in the
+bottom bar, or press **Cmd+Z** to undo and **Cmd+Shift+Z** to redo. This covers text
+edits, photos, projects, sizes, and sections — right back to your last save.
+
 ### Photos
 Every project has a **PHOTOS** button on its image. Click it to:
 - **Add photos** — pick one or more image files from your computer
@@ -42,6 +53,18 @@ To change your **profile photo** on the About page, click it while editing.
   a title, then click its text and Photos to fill it in.
 - **Move / Delete** — each project has ↑ ↓ ✕ controls in its top-right corner.
   Projects renumber themselves automatically.
+
+### Sections
+A "section" is a big block of the page — the intro, the projects, the contact banner,
+and on the About page the biography, expertise, quote, and closing.
+
+- **Add** — the **+ ADD SECTION** button (bottom bar) lets you add a new block. Pick a
+  type: **Text**, **Text + photo**, **Photo gallery**, or **Quote**. It drops in styled
+  to match the site; click its text to fill it in, and use its photo controls for images.
+- **Move** — hover a section and use the ↑ ↓ buttons in its top-left corner to move it.
+- **Hide** — built-in sections have a hide button (⦸). A hidden section disappears from
+  the live site; while editing you'll see a small "Hidden … [Show]" bar to bring it back.
+- **Delete** — sections you added have a ✕ to remove them.
 
 Switch between the **Home** and **About** pages using the links in the bottom bar.
 
@@ -78,9 +101,12 @@ The live site updates about a minute later.
 
 ## Under the hood (for reference)
 
-- All website text lives in `content.js` — the editor writes to it for you.
-- Project sections are drawn by `render-projects.js` from that text, so adding a
-  project needs no HTML editing.
+- All website text lives in `content.js` — the editor writes to it for you. Text
+  sizes live under a `styles` key, and the section layout under `sections` /
+  `sectionData`; all of it is created for you as you edit.
+- Project sections are drawn by `render-projects.js`, and page section order plus any
+  sections you add are drawn by `sections.js` — both from `content.js`, so nothing
+  needs HTML editing.
 - `editor/` holds the local editor (a small Node server + the on-page tools). It runs
   only on your computer and is never part of what visitors load.
 - Publishing = a `git` commit and push to the `berkrose.github.io` repository on
