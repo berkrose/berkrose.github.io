@@ -152,6 +152,56 @@ body { padding-bottom: 84px !important; }
 .ed-proj-controls button:disabled { opacity: 0.3; cursor: default; }
 .ed-proj-controls button.ed-proj-delete:hover { background: var(--ed-red); }
 
+/* ── Section controls (move / hide / delete), top-left of each section ────── */
+.ed-sec-controls {
+  position: absolute; top: 14px; left: 14px; z-index: 21;
+  display: flex; gap: 2px; background: var(--ed-red); padding: 3px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.28);
+  opacity: 0; transition: opacity 0.15s ease;
+}
+.ed-hostrel:hover > .ed-sec-controls { opacity: 1; }
+.ed-sec-controls button {
+  background: transparent; border: none; color: #fff; cursor: pointer;
+  width: 28px; height: 26px; font-size: 13px; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--ed-font);
+}
+.ed-sec-controls button:hover { background: rgba(255, 255, 255, 0.22); }
+.ed-sec-controls button:disabled { opacity: 0.35; cursor: default; }
+
+/* Ghost bar shown in place of a hidden built-in section */
+.ed-sec-ghost {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  margin: 8px 32px; padding: 12px 18px; border: 1px dashed var(--ed-red);
+  background: rgba(187, 0, 24, 0.05); font-family: var(--ed-font);
+}
+.ed-sec-ghost-label {
+  font-size: 11px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.12em; color: var(--ed-red);
+}
+.ed-sec-ghost-show {
+  background: var(--ed-red); color: #fff; border: none; cursor: pointer;
+  font-family: var(--ed-font); font-size: 10px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.12em; padding: 7px 14px;
+}
+.ed-sec-ghost-show:hover { background: var(--ed-red-hover); }
+
+/* Add-section picker */
+.ed-modal-sm { max-width: 460px; }
+.ed-section-picker {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 20px;
+}
+.ed-section-card {
+  display: flex; flex-direction: column; gap: 5px; text-align: left;
+  padding: 16px; border: 1px solid #ddd; background: #fafafa; cursor: pointer;
+  font-family: var(--ed-font); transition: border-color 0.15s ease, background 0.15s ease;
+}
+.ed-section-card:hover { border-color: var(--ed-red); background: #fff; }
+.ed-section-card-title {
+  font-size: 13px; font-weight: 700; color: #161616;
+}
+.ed-section-card-desc { font-size: 11px; color: #8a8a8a; }
+
 /* ── Photos button on image frames ───────────────────────────────────────── */
 .ed-photos-btn {
   position: absolute; bottom: 10px; right: 10px; z-index: 20;

@@ -464,6 +464,7 @@
       if (d.style.maxHeight && d.style.maxHeight !== '0px') openIds.push(d.id);
     });
     if (typeof window.renderProjects === 'function') window.renderProjects();
+    if (typeof window.renderSections === 'function') window.renderSections();
     openIds.forEach(function (id) {
       var d = document.getElementById(id);
       if (!d) return;
@@ -540,51 +541,57 @@
     });
   }
 
-  // ── Read-more paragraphs ──────────────────────────────────────────────────
-  function adornReadMore() {
+  // ── Paragraph lists (project read-more + custom section bodies) ────────────
+  function adornParagraphList(wrap, arrPath) {
+    wrap.querySelectorAll('p[data-content]').forEach(function (p) {
+      p.classList.add('ed-hostrel');
+      if (p.querySelector('.ed-x')) return;
+      var x = make('button', 'ed-x', '×');
+      x.type = 'button';
+      x.title = 'Delete this paragraph';
+      x.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var idx = Number(p.getAttribute('data-content').split('.').pop());
+        var arr = getPath(draft, arrPath) || [];
+        var current = arr[idx] || '';
+        if (current.trim() !== '' && !confirm('Delete this paragraph?')) return;
+        pushHistory();
+        getPath(draft, arrPath).splice(idx, 1);
+        markUnsaved();
+        rerender();
+      });
+      p.appendChild(x);
+    });
+
+    if (!wrap.querySelector('.ed-add-para')) {
+      var add = make('button', 'ed-add-para', '+ paragraph');
+      add.type = 'button';
+      add.title = 'Add a paragraph';
+      add.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        pushHistory();
+        var arr = getPath(draft, arrPath);
+        if (!arr) { setPath(draft, arrPath, []); arr = getPath(draft, arrPath); }
+        arr.push('');
+        markUnsaved();
+        rerender();
+        var p = document.querySelector('[data-content="' + arrPath + '.' + (arr.length - 1) + '"]');
+        if (p) startEdit(p);
+      });
+      wrap.appendChild(add);
+    }
+  }
+
+  function adornParagraphLists() {
     document.querySelectorAll('[data-role="readmore"]').forEach(function (wrap) {
       var section = wrap.closest('[data-project-key]');
-      if (!section) return;
-      var key = section.dataset.projectKey;
-
-      wrap.querySelectorAll('p[data-content]').forEach(function (p) {
-        p.classList.add('ed-hostrel');
-        if (p.querySelector('.ed-x')) return;
-        var x = make('button', 'ed-x', '×');
-        x.type = 'button';
-        x.title = 'Delete this paragraph';
-        x.addEventListener('click', function (e) {
-          e.preventDefault();
-          e.stopPropagation();
-          var idx = Number(p.getAttribute('data-content').split('.').pop());
-          var current = draft.projects[key].readMore[idx] || '';
-          if (current.trim() !== '' && !confirm('Delete this paragraph?')) return;
-          pushHistory();
-          draft.projects[key].readMore.splice(idx, 1);
-          markUnsaved();
-          rerender();
-        });
-        p.appendChild(x);
-      });
-
-      if (!wrap.querySelector('.ed-add-para')) {
-        var add = make('button', 'ed-add-para', '+ paragraph');
-        add.type = 'button';
-        add.title = 'Add a paragraph';
-        add.addEventListener('click', function (e) {
-          e.preventDefault();
-          e.stopPropagation();
-          pushHistory();
-          var arr = draft.projects[key].readMore = draft.projects[key].readMore || [];
-          arr.push('');
-          markUnsaved();
-          rerender();
-          var p = document.querySelector(
-            '[data-content="projects.' + key + '.readMore.' + (arr.length - 1) + '"]');
-          if (p) startEdit(p);
-        });
-        wrap.appendChild(add);
-      }
+      if (section) adornParagraphList(wrap, 'projects.' + section.dataset.projectKey + '.readMore');
+    });
+    document.querySelectorAll('[data-role="sec-body"]').forEach(function (wrap) {
+      var section = wrap.closest('[data-custom-section]');
+      if (section) adornParagraphList(wrap, 'sectionData.' + section.getAttribute('data-custom-section') + '.body');
     });
   }
 
@@ -724,10 +731,29 @@
     });
   }
 
+  // Photo manager is spec-driven so projects and gallery sections can share it.
+  // spec = { title, folder, getImages(), minImages, onChange() }
+  var photoSpec = null;
+
+  function projectPhotoSpec(key) {
+    return {
+      title: draft.projects[key].title || key,
+      folder: projectFolder(key),
+      getImages: function () { return draft.projects[key].images; },
+      minImages: 1,
+      onChange: rerender
+    };
+  }
+
   function openPhotoModal(key) {
+    openPhotoModalSpec(projectPhotoSpec(key));
+  }
+
+  function openPhotoModalSpec(spec) {
     if (editing) commitEdit();
     closePhotoModal();
-    modalState = { key: key };
+    photoSpec = spec;
+    modalState = { spec: spec };
 
     var backdrop = make('div', 'ed-backdrop');
     backdrop.id = 'ed-photo-modal';
@@ -738,7 +764,7 @@
     var modal = make('div', 'ed-modal');
 
     var head = make('div', 'ed-modal-head');
-    var h = make('h3', '', 'Photos - ' + (draft.projects[key].title || key));
+    var h = make('h3', '', 'Photos - ' + spec.title);
     var close = make('button', 'ed-modal-close', '×');
     close.type = 'button';
     close.addEventListener('click', function () { closePhotoModal(true); });
@@ -767,25 +793,29 @@
       photoInput.onchange = function () {
         var files = Array.prototype.slice.call(photoInput.files || []);
         photoInput.value = '';
-        if (files.length) uploadPhotos(key, files, addBtn);
+        if (files.length) uploadPhotos(files, addBtn);
       };
       photoInput.click();
     });
-    var hint = make('span', 'ed-modal-hint', 'The first photo is the main one shown on the page.');
+    var hint = make('span', 'ed-modal-hint',
+      spec.minImages > 0
+        ? 'The first photo is the main one shown on the page.'
+        : 'Photos appear in this order in the gallery.');
     foot.appendChild(addBtn);
     foot.appendChild(hint);
     modal.appendChild(foot);
 
     backdrop.appendChild(modal);
     document.body.appendChild(backdrop);
-    renderPhotoGrid(key);
+    renderPhotoGrid();
   }
 
-  function renderPhotoGrid(key) {
+  function renderPhotoGrid() {
     var grid = document.getElementById('ed-photo-grid');
-    if (!grid) return;
+    if (!grid || !photoSpec) return;
     grid.replaceChildren();
-    var images = draft.projects[key].images || [];
+    var images = photoSpec.getImages() || [];
+    var showMain = photoSpec.minImages > 0;
 
     if (images.length === 0) {
       grid.appendChild(make('div', 'ed-modal-hint', 'No photos yet - click "Add photos" to upload some.'));
@@ -793,14 +823,14 @@
     }
 
     images.forEach(function (src, i) {
-      var cell = make('div', 'ed-photo-cell' + (i === 0 ? ' ed-photo-cell-main' : ''));
+      var cell = make('div', 'ed-photo-cell' + (i === 0 && showMain ? ' ed-photo-cell-main' : ''));
 
       var wrapEl = make('div', 'ed-photo-thumb-wrap');
       var img = document.createElement('img');
       img.src = src;
       img.alt = '';
       wrapEl.appendChild(img);
-      if (i === 0) wrapEl.appendChild(make('span', 'ed-main-label', 'Main'));
+      if (i === 0 && showMain) wrapEl.appendChild(make('span', 'ed-main-label', 'Main'));
       cell.appendChild(wrapEl);
 
       var actions = make('div', 'ed-photo-actions');
@@ -809,66 +839,71 @@
       left.type = 'button';
       left.title = 'Move earlier';
       left.disabled = i === 0;
-      left.addEventListener('click', function () { movePhoto(key, i, -1); });
+      left.addEventListener('click', function () { movePhoto(i, -1); });
 
       var right = make('button', '', '▶');
       right.type = 'button';
       right.title = 'Move later';
       right.disabled = i === images.length - 1;
-      right.addEventListener('click', function () { movePhoto(key, i, 1); });
+      right.addEventListener('click', function () { movePhoto(i, 1); });
 
-      var main = make('button', 'ed-make-main', i === 0 ? 'Main photo' : 'Make main');
-      main.type = 'button';
-      main.disabled = i === 0;
-      main.addEventListener('click', function () {
-        pushHistory();
-        var arr = draft.projects[key].images;
-        arr.unshift(arr.splice(i, 1)[0]);
-        markUnsaved();
-        renderPhotoGrid(key);
-      });
+      actions.appendChild(left);
+      actions.appendChild(right);
+
+      if (showMain) {
+        var main = make('button', 'ed-make-main', i === 0 ? 'Main photo' : 'Make main');
+        main.type = 'button';
+        main.disabled = i === 0;
+        main.addEventListener('click', function () {
+          pushHistory();
+          var arr = photoSpec.getImages();
+          arr.unshift(arr.splice(i, 1)[0]);
+          markUnsaved();
+          renderPhotoGrid();
+        });
+        actions.appendChild(main);
+      }
 
       var del = make('button', 'ed-photo-del', '×');
       del.type = 'button';
-      del.title = 'Remove this photo from the project';
+      del.title = 'Remove this photo';
       del.addEventListener('click', function () {
-        var arr = draft.projects[key].images;
-        if (arr.length <= 1) {
+        var arr = photoSpec.getImages();
+        if (arr.length <= photoSpec.minImages) {
           toast('A project needs at least one photo.', 'info');
           return;
         }
         pushHistory();
         arr.splice(i, 1);
         markUnsaved();
-        renderPhotoGrid(key);
+        renderPhotoGrid();
       });
-
-      actions.appendChild(left);
-      actions.appendChild(right);
-      actions.appendChild(main);
       actions.appendChild(del);
+
       cell.appendChild(actions);
       grid.appendChild(cell);
     });
   }
 
-  function movePhoto(key, i, dir) {
-    var arr = draft.projects[key].images;
+  function movePhoto(i, dir) {
+    if (!photoSpec) return;
+    var arr = photoSpec.getImages();
     var j = i + dir;
     if (j < 0 || j >= arr.length) return;
     pushHistory();
     var tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
     markUnsaved();
-    renderPhotoGrid(key);
+    renderPhotoGrid();
   }
 
   function closePhotoModal(applyChanges) {
     var existing = document.getElementById('ed-photo-modal');
     if (existing) existing.remove();
-    if (modalState && applyChanges) {
-      rerender();
+    if (modalState && applyChanges && photoSpec && photoSpec.onChange) {
+      photoSpec.onChange();
     }
     modalState = null;
+    photoSpec = null;
   }
 
   // ── Image upload pipeline ─────────────────────────────────────────────────
@@ -910,8 +945,10 @@
     return base || 'photo';
   }
 
-  function uploadPhotos(key, files, btn) {
-    var folder = projectFolder(key);
+  function uploadPhotos(files, btn) {
+    if (!photoSpec) return;
+    var spec = photoSpec;
+    var folder = spec.folder;
     var origLabel = btn ? btn.textContent : '';
     if (btn) { btn.disabled = true; btn.textContent = 'Uploading…'; }
 
@@ -929,7 +966,7 @@
         }).then(function (res) {
           if (res.ok && res.data.path) {
             if (!pushed) { pushHistory(); pushed = true; }
-            draft.projects[key].images.push(res.data.path);
+            spec.getImages().push(res.data.path);
             okCount += 1;
             markUnsaved();
           } else {
@@ -944,7 +981,7 @@
     chain.then(function () {
       if (btn) { btn.disabled = false; btn.textContent = origLabel; }
       if (okCount > 0) toast('Added ' + okCount + ' photo' + (okCount === 1 ? '' : 's'), 'ok');
-      renderPhotoGrid(key);
+      renderPhotoGrid();
     });
   }
 
@@ -995,13 +1032,311 @@
     });
   }
 
+  // ── Sections (add / move / hide / delete) ─────────────────────────────────
+  var pageKey = null; // 'home' | 'about', set in init
+  var sectionImgInput = null;
+
+  var BUILTIN_LABELS = {
+    hero: 'Intro', projects: 'Projects', cta: 'Contact banner',
+    bio: 'Biography', expertise: 'Expertise', quote: 'Quote', closing: 'Closing'
+  };
+
+  // Registry for display (does not create/store one if absent).
+  function currentRegistry() {
+    if (draft.sections && draft.sections[pageKey]) return draft.sections[pageKey];
+    return (typeof window.defaultSections === 'function') ? window.defaultSections() : [];
+  }
+
+  // Ensure a stored registry exists for this page, returning the stored array.
+  function ensureSections() {
+    draft.sections = draft.sections || {};
+    if (!draft.sections[pageKey]) {
+      draft.sections[pageKey] = (typeof window.defaultSections === 'function') ? window.defaultSections() : [];
+    }
+    return draft.sections[pageKey];
+  }
+
+  function moveSection(id, dir) {
+    var reg = currentRegistry();
+    var i = reg.findIndex(function (e) { return e.id === id; });
+    var j = i + dir;
+    if (i === -1 || j < 0 || j >= reg.length) return;
+    pushHistory();
+    reg = ensureSections();
+    var tmp = reg[i]; reg[i] = reg[j]; reg[j] = tmp;
+    markUnsaved();
+    if (window.renderSections) window.renderSections();
+    enhance();
+    var el = document.querySelector('[data-section="' + id + '"]');
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  function setSectionHidden(id, hidden) {
+    pushHistory();
+    var reg = ensureSections();
+    var entry = reg.find(function (e) { return e.id === id; });
+    if (!entry) { undoStack.pop(); updateHistoryButtons(); return; }
+    entry.hidden = hidden;
+    markUnsaved();
+    if (window.renderSections) window.renderSections();
+    enhance();
+  }
+
+  function flipSectionSide(id) {
+    var data = draft.sectionData && draft.sectionData[id];
+    if (!data) return;
+    pushHistory();
+    ensureSections();
+    data.side = (data.side === 'right') ? 'left' : 'right';
+    markUnsaved();
+    if (window.renderSections) window.renderSections();
+    enhance();
+  }
+
+  function deleteSection(id) {
+    var data = draft.sectionData && draft.sectionData[id];
+    var typeName = (data && data.type) ? data.type.replace('textImage', 'text and photo') : 'section';
+    if (!confirm('Delete this ' + typeName + ' section?')) return;
+    pushHistory();
+    var reg = ensureSections();
+    draft.sections[pageKey] = reg.filter(function (e) { return e.id !== id; });
+    if (draft.sectionData) delete draft.sectionData[id];
+    markUnsaved();
+    if (window.renderSections) window.renderSections();
+    enhance();
+    toast('Section deleted', 'ok');
+  }
+
+  function adornSections() {
+    var main = document.querySelector('main');
+    if (!main) return;
+    // Rebuild ghost bars from scratch each pass (idempotent).
+    Array.prototype.slice.call(main.querySelectorAll('.ed-sec-ghost')).forEach(function (g) { g.remove(); });
+
+    var reg = currentRegistry();
+    reg.forEach(function (entry, idx) {
+      var el = main.querySelector(':scope > [data-section="' + entry.id + '"]');
+      if (!el) return;
+
+      if (entry.hidden && entry.builtin) {
+        var ghost = make('div', 'ed-sec-ghost');
+        ghost.appendChild(make('span', 'ed-sec-ghost-label',
+          'Hidden: ' + (BUILTIN_LABELS[entry.id] || entry.id)));
+        var show = make('button', 'ed-sec-ghost-show', 'Show');
+        show.type = 'button';
+        show.addEventListener('click', function () { setSectionHidden(entry.id, false); });
+        ghost.appendChild(show);
+        main.insertBefore(ghost, el);
+        return;
+      }
+
+      el.classList.add('ed-hostrel');
+      if (el.querySelector(':scope > .ed-sec-controls')) return;
+
+      var box = make('div', 'ed-sec-controls');
+      var up = make('button', '', '↑');
+      up.type = 'button';
+      up.title = 'Move section up';
+      up.disabled = idx === 0;
+      up.addEventListener('click', function () { moveSection(entry.id, -1); });
+      var down = make('button', '', '↓');
+      down.type = 'button';
+      down.title = 'Move section down';
+      down.disabled = idx === reg.length - 1;
+      down.addEventListener('click', function () { moveSection(entry.id, 1); });
+      box.appendChild(up);
+      box.appendChild(down);
+
+      if (entry.builtin) {
+        var hide = make('button', '', '⦸');
+        hide.type = 'button';
+        hide.title = 'Hide this section';
+        hide.addEventListener('click', function () { setSectionHidden(entry.id, true); });
+        box.appendChild(hide);
+      } else {
+        var data = (draft.sectionData && draft.sectionData[entry.id]) || {};
+        if (data.type === 'textImage') {
+          var flip = make('button', '', '⇋');
+          flip.type = 'button';
+          flip.title = 'Flip which side the photo is on';
+          flip.addEventListener('click', function () { flipSectionSide(entry.id); });
+          box.appendChild(flip);
+        }
+        var del = make('button', 'ed-proj-delete', '✕');
+        del.type = 'button';
+        del.title = 'Delete this section';
+        del.addEventListener('click', function () { deleteSection(entry.id); });
+        box.appendChild(del);
+      }
+      el.appendChild(box);
+    });
+  }
+
+  // Photos for custom sections: textImage = click-to-replace, gallery = modal.
+  function gallerySpec(id) {
+    return {
+      title: 'Gallery',
+      folder: 'sections',
+      getImages: function () {
+        draft.sectionData[id].images = draft.sectionData[id].images || [];
+        return draft.sectionData[id].images;
+      },
+      minImages: 0,
+      onChange: function () { if (window.renderSections) window.renderSections(); enhance(); }
+    };
+  }
+
+  function replaceSectionImage(id) {
+    if (!sectionImgInput) {
+      sectionImgInput = document.createElement('input');
+      sectionImgInput.type = 'file';
+      sectionImgInput.accept = 'image/png,image/jpeg,image/webp';
+      sectionImgInput.setAttribute('data-editor', '');
+      sectionImgInput.style.display = 'none';
+      document.body.appendChild(sectionImgInput);
+    }
+    sectionImgInput.onchange = function () {
+      var file = sectionImgInput.files && sectionImgInput.files[0];
+      sectionImgInput.value = '';
+      if (!file) return;
+      toast('Uploading photo…', 'info', 2500);
+      processImageFile(file).then(function (out) {
+        return api('/api/upload-image', {
+          folder: 'sections',
+          filename: safeBaseName(file.name) + out.ext,
+          data: out.base64
+        });
+      }).then(function (res) {
+        if (res.ok && res.data.path) {
+          pushHistory();
+          draft.sectionData[id].image = res.data.path;
+          markUnsaved();
+          if (window.renderSections) window.renderSections();
+          enhance();
+          toast('Photo updated', 'ok');
+        } else {
+          toast('Could not upload the photo: ' + (res.data.error || 'unknown error'), 'error', 6000);
+        }
+      }).catch(function (e) {
+        toast('Could not upload the photo: ' + e.message, 'error', 6000);
+      });
+    };
+    sectionImgInput.click();
+  }
+
+  function setupSectionImages() {
+    document.querySelectorAll('[data-role="sec-image"]').forEach(function (frame) {
+      var section = frame.closest('[data-custom-section]');
+      if (!section) return;
+      var id = section.getAttribute('data-custom-section');
+      frame.classList.add('ed-hostrel', 'ed-frame-clickable');
+      if (!frame.querySelector('.ed-photos-btn')) {
+        var btn = make('button', 'ed-photos-btn', 'Replace photo');
+        btn.type = 'button';
+        btn.addEventListener('click', function (e) { e.stopPropagation(); replaceSectionImage(id); });
+        frame.appendChild(btn);
+      }
+      if (!frame.dataset.edPhotoClick) {
+        frame.dataset.edPhotoClick = '1';
+        frame.addEventListener('click', function (e) {
+          if (e.target.closest('[data-editor]')) return;
+          replaceSectionImage(id);
+        });
+      }
+    });
+
+    document.querySelectorAll('[data-role="sec-gallery"]').forEach(function (grid) {
+      var section = grid.closest('[data-custom-section]');
+      if (!section) return;
+      var id = section.getAttribute('data-custom-section');
+      grid.classList.add('ed-hostrel');
+      if (!grid.querySelector('.ed-photos-btn')) {
+        var btn = make('button', 'ed-photos-btn', 'Photos');
+        btn.type = 'button';
+        btn.addEventListener('click', function (e) { e.stopPropagation(); openPhotoModalSpec(gallerySpec(id)); });
+        grid.appendChild(btn);
+      }
+    });
+  }
+
+  // ── Add section ────────────────────────────────────────────────────────────
+  function openAddSectionModal() {
+    if (editing) commitEdit();
+    var backdrop = make('div', 'ed-backdrop');
+    backdrop.id = 'ed-section-modal';
+    backdrop.addEventListener('click', function (e) { if (e.target === backdrop) backdrop.remove(); });
+
+    var modal = make('div', 'ed-modal ed-modal-sm');
+    var head = make('div', 'ed-modal-head');
+    head.appendChild(make('h3', '', 'Add a section'));
+    var close = make('button', 'ed-modal-close', '×');
+    close.type = 'button';
+    close.addEventListener('click', function () { backdrop.remove(); });
+    head.appendChild(close);
+    modal.appendChild(head);
+
+    var picker = make('div', 'ed-section-picker');
+    [['text', 'Text', 'A heading and paragraphs'],
+     ['textImage', 'Text + photo', 'Words beside a photo'],
+     ['gallery', 'Photo gallery', 'A grid of photos'],
+     ['quote', 'Quote', 'A big centered quote']].forEach(function (t) {
+      var card = make('button', 'ed-section-card');
+      card.type = 'button';
+      card.appendChild(make('span', 'ed-section-card-title', t[1]));
+      card.appendChild(make('span', 'ed-section-card-desc', t[2]));
+      card.addEventListener('click', function () { backdrop.remove(); addSection(t[0]); });
+      picker.appendChild(card);
+    });
+    modal.appendChild(picker);
+    backdrop.appendChild(modal);
+    document.body.appendChild(backdrop);
+  }
+
+  function addSection(type) {
+    pushHistory();
+    ensureSections();
+    draft.sectionData = draft.sectionData || {};
+
+    var id = type + '-' + Math.random().toString(36).slice(2, 6);
+    while (draft.sectionData[id] || draft.sections[pageKey].some(function (e) { return e.id === id; })) {
+      id = type + '-' + Math.random().toString(36).slice(2, 6);
+    }
+
+    var data;
+    if (type === 'textImage') {
+      data = { type: type, label: 'Section', heading: 'New section', body: ['Write something here.'], image: '', imageAlt: '', side: 'left' };
+    } else if (type === 'gallery') {
+      data = { type: type, heading: 'Gallery', images: [] };
+    } else if (type === 'quote') {
+      data = { type: type, text: 'A quote you love.', attribution: '- Name' };
+    } else {
+      data = { type: 'text', label: 'Section', heading: 'New section', body: ['Write something here.'] };
+    }
+    draft.sectionData[id] = data;
+
+    var reg = draft.sections[pageKey];
+    var entry = { id: id, type: type };
+    var ctaIdx = reg.findIndex(function (e) { return e.builtin && e.id === 'cta'; });
+    if (ctaIdx !== -1) reg.splice(ctaIdx, 0, entry);
+    else reg.push(entry);
+
+    markUnsaved();
+    if (window.renderSections) window.renderSections();
+    enhance();
+    var el = document.querySelector('[data-custom-section="' + id + '"]');
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    toast('Added a ' + (type === 'textImage' ? 'text and photo' : type) + ' section - click its text to edit it.', 'ok', 5000);
+  }
+
   // ── Enhance (idempotent; re-run after every render) ───────────────────────
   function enhance() {
     document.querySelectorAll('[data-content]').forEach(setupEditable);
     adornTags();
-    adornReadMore();
+    adornParagraphLists();
     adornProjectControls();
     adornPhotoButtons();
+    adornSections();
+    setupSectionImages();
     setupProfilePhoto();
   }
 
@@ -1043,6 +1378,12 @@
       bar.appendChild(add);
     }
 
+    var addSec = make('button', 'ed-btn ed-btn-ghost', '+ Add section');
+    addSec.type = 'button';
+    addSec.id = 'ed-add-section';
+    addSec.addEventListener('click', openAddSectionModal);
+    bar.appendChild(addSec);
+
     var status = make('span', 'ed-status');
     statusDot = make('span', 'ed-dot');
     statusEl = make('span', '', 'All changes saved');
@@ -1077,6 +1418,7 @@
   // ── Init ──────────────────────────────────────────────────────────────────
   function init() {
     isHomePage = !!document.getElementById('projects-container');
+    pageKey = isHomePage ? 'home' : 'about';
     lastSaved = snapshot();
     buildToolbar();
     enhance();
