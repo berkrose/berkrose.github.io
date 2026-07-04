@@ -11,6 +11,7 @@
 <script src="content-loader.js"></script>
 <script src="render-projects.js"></script>
 <script src="sections.js"></script>
+<script src="nav.js"></script>
 <script id="tailwind-config">
   tailwind.config = {
     darkMode: "class",
@@ -129,8 +130,14 @@
       <a href="index.html" class="font-['Inter_Tight'] text-[13px] tracking-[0.1em] uppercase text-red-700 relative after:content-[''] after:absolute after:-bottom-1 after:left-1/2 after:-translate-x-1/2 after:w-1 after:h-1 after:bg-red-700 after:rounded-full" data-content="nav.projects">Projects</a>
       <a href="about.html" class="font-['Inter_Tight'] text-[13px] tracking-[0.1em] uppercase text-zinc-500 hover:text-black transition-colors duration-300" data-content="nav.about">About</a>
     </div>
-    <div class="md:hidden">
-      <span class="material-symbols-outlined">menu</span>
+    <div class="md:hidden relative">
+      <button id="nav-menu-toggle" type="button" aria-label="Menu" aria-expanded="false" aria-controls="nav-menu-panel" class="flex items-center text-black">
+        <span class="material-symbols-outlined" id="nav-menu-icon">menu</span>
+      </button>
+      <div id="nav-menu-panel" class="hidden absolute right-0 top-full mt-3 bg-white shadow-xl border border-zinc-100 py-2 min-w-[170px]">
+        <a href="index.html" class="block px-5 py-3 font-['Inter_Tight'] text-[13px] tracking-[0.1em] uppercase text-zinc-700 hover:text-red-700 hover:bg-zinc-50 transition-colors" data-content="nav.projects">Projects</a>
+        <a href="about.html" class="block px-5 py-3 font-['Inter_Tight'] text-[13px] tracking-[0.1em] uppercase text-zinc-700 hover:text-red-700 hover:bg-zinc-50 transition-colors" data-content="nav.about">About</a>
+      </div>
     </div>
   </div>
 </nav>
