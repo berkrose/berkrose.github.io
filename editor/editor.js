@@ -28,6 +28,15 @@
 
   var isHomePage = null; // resolved on init
 
+  // Undo/redo: JSON snapshots of the whole draft. lastSaved is the snapshot of
+  // the most recently saved state, used to derive the "unsaved" flag truthfully
+  // (so undoing back to the saved state clears it).
+  var undoStack = [];
+  var redoStack = [];
+  var lastSaved = null;
+  var undoBtn = null;
+  var redoBtn = null;
+
   // ── Small helpers ─────────────────────────────────────────────────────────
   function getPath(obj, path) {
     return path.split('.').reduce(function (cur, key) {
@@ -91,9 +100,65 @@
     }, ms || 3800);
   }
 
+  // ── Undo / redo history ─────────────────────────────────────────────────────
+  function snapshot() {
+    return JSON.stringify(draft);
+  }
+
+  // Restore a snapshot IN PLACE - draft/CONTENT is a const binding shared with
+  // render-projects.js and content-loader.js, so it must never be reassigned.
+  function restoreState(json) {
+    var parsed = JSON.parse(json);
+    Object.keys(draft).forEach(function (k) { delete draft[k]; });
+    Object.assign(draft, parsed);
+  }
+
+  function pushHistory() {
+    undoStack.push(snapshot());
+    if (undoStack.length > 100) undoStack.shift();
+    redoStack.length = 0;
+    updateHistoryButtons();
+  }
+
+  function updateHistoryButtons() {
+    if (undoBtn) undoBtn.disabled = undoStack.length === 0;
+    if (redoBtn) redoBtn.disabled = redoStack.length === 0;
+  }
+
+  // Re-render everything from the restored draft and refresh editor chrome.
+  function afterRestore() {
+    // Close any open photo modal without a mid-restore rerender.
+    var modal = document.getElementById('ed-photo-modal');
+    if (modal) modal.remove();
+    modalState = null;
+    if (typeof window.applyContent === 'function') window.applyContent();
+    if (typeof window.renderSections === 'function') window.renderSections();
+    rerender();
+    markUnsaved();
+    updateHistoryButtons();
+  }
+
+  function undo() {
+    if (editing) commitEdit();
+    if (!undoStack.length) return;
+    redoStack.push(snapshot());
+    restoreState(undoStack.pop());
+    afterRestore();
+  }
+
+  function redo() {
+    if (editing) commitEdit();
+    if (!redoStack.length) return;
+    undoStack.push(snapshot());
+    restoreState(redoStack.pop());
+    afterRestore();
+  }
+
   // ── Status ────────────────────────────────────────────────────────────────
+  // "unsaved" is derived: true whenever the draft differs from the last saved
+  // snapshot. Callers still invoke markUnsaved() after mutating.
   function markUnsaved() {
-    unsaved = true;
+    unsaved = (lastSaved !== null && snapshot() !== lastSaved);
     updateStatusText();
   }
 
@@ -125,6 +190,7 @@
     if (editing) commitEdit();
     return api('/api/content', draft).then(function (res) {
       if (res.ok) {
+        lastSaved = snapshot();
         unsaved = false;
         toast('Saved', 'ok', 2200);
         return refreshStatus();
@@ -231,6 +297,7 @@
     } else {
       ed.el.textContent = value;
     }
+    if (value !== ed.prevValue) pushHistory();
     setPath(draft, ed.path, value);
     if (value !== ed.prevValue) markUnsaved();
     enhance(); // re-add adornments stripped at edit start
@@ -346,6 +413,7 @@
           e.preventDefault();
           e.stopPropagation();
           var idx = Number(chip.getAttribute('data-content').split('.').pop());
+          pushHistory();
           draft.projects[key].tags.splice(idx, 1);
           markUnsaved();
           rerender();
@@ -360,6 +428,7 @@
         add.addEventListener('click', function (e) {
           e.preventDefault();
           e.stopPropagation();
+          pushHistory();
           var tags = draft.projects[key].tags = draft.projects[key].tags || [];
           tags.push('New Tag');
           markUnsaved();
@@ -392,6 +461,7 @@
           var idx = Number(p.getAttribute('data-content').split('.').pop());
           var current = draft.projects[key].readMore[idx] || '';
           if (current.trim() !== '' && !confirm('Delete this paragraph?')) return;
+          pushHistory();
           draft.projects[key].readMore.splice(idx, 1);
           markUnsaved();
           rerender();
@@ -406,6 +476,7 @@
         add.addEventListener('click', function (e) {
           e.preventDefault();
           e.stopPropagation();
+          pushHistory();
           var arr = draft.projects[key].readMore = draft.projects[key].readMore || [];
           arr.push('');
           markUnsaved();
@@ -447,6 +518,7 @@
       del.addEventListener('click', function () {
         var title = draft.projects[key].title || key;
         if (!confirm('Delete the project "' + title + '"? Its photos stay on this computer, but the project disappears from the site.')) return;
+        pushHistory();
         delete draft.projects[key];
         renumberProjects();
         markUnsaved();
@@ -466,6 +538,7 @@
     var i = keys.indexOf(key);
     var j = i + dir;
     if (i === -1 || j < 0 || j >= keys.length) return;
+    pushHistory();
     var tmp = keys[i]; keys[i] = keys[j]; keys[j] = tmp;
     reorderKeys(keys);
     renumberProjects();
@@ -482,6 +555,7 @@
     title = title.trim();
     if (!title) { toast('The project needs a name.', 'info'); return; }
 
+    pushHistory();
     var slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '') || 'project';
     var key = slug;
     var n = 2;
@@ -649,6 +723,7 @@
       main.type = 'button';
       main.disabled = i === 0;
       main.addEventListener('click', function () {
+        pushHistory();
         var arr = draft.projects[key].images;
         arr.unshift(arr.splice(i, 1)[0]);
         markUnsaved();
@@ -664,6 +739,7 @@
           toast('A project needs at least one photo.', 'info');
           return;
         }
+        pushHistory();
         arr.splice(i, 1);
         markUnsaved();
         renderPhotoGrid(key);
@@ -682,6 +758,7 @@
     var arr = draft.projects[key].images;
     var j = i + dir;
     if (j < 0 || j >= arr.length) return;
+    pushHistory();
     var tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
     markUnsaved();
     renderPhotoGrid(key);
@@ -742,6 +819,7 @@
 
     var chain = Promise.resolve();
     var okCount = 0;
+    var pushed = false; // one history snapshot for the whole upload batch
     files.forEach(function (file) {
       chain = chain.then(function () {
         return processImageFile(file).then(function (out) {
@@ -752,6 +830,7 @@
           });
         }).then(function (res) {
           if (res.ok && res.data.path) {
+            if (!pushed) { pushHistory(); pushed = true; }
             draft.projects[key].images.push(res.data.path);
             okCount += 1;
             markUnsaved();
@@ -799,6 +878,7 @@
         });
       }).then(function (res) {
         if (res.ok && res.data.path) {
+          pushHistory();
           draft.about.profilePhoto = res.data.path;
           img.src = res.data.path;
           markUnsaved();
@@ -842,6 +922,21 @@
     });
     bar.appendChild(pages);
 
+    var history = make('div', 'ed-history');
+    undoBtn = make('button', 'ed-btn ed-btn-ghost ed-btn-icon', '↺');
+    undoBtn.type = 'button';
+    undoBtn.title = 'Undo (Cmd+Z)';
+    undoBtn.disabled = true;
+    undoBtn.addEventListener('click', undo);
+    redoBtn = make('button', 'ed-btn ed-btn-ghost ed-btn-icon', '↻');
+    redoBtn.type = 'button';
+    redoBtn.title = 'Redo (Cmd+Shift+Z)';
+    redoBtn.disabled = true;
+    redoBtn.addEventListener('click', redo);
+    history.appendChild(undoBtn);
+    history.appendChild(redoBtn);
+    bar.appendChild(history);
+
     if (isHomePage) {
       var add = make('button', 'ed-btn ed-btn-ghost', '+ Add project');
       add.type = 'button';
@@ -884,14 +979,28 @@
   // ── Init ──────────────────────────────────────────────────────────────────
   function init() {
     isHomePage = !!document.getElementById('projects-container');
+    lastSaved = snapshot();
     buildToolbar();
     enhance();
     refreshStatus();
+    updateHistoryButtons();
 
     document.addEventListener('keydown', function (e) {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') {
         e.preventDefault();
         save();
+      }
+      // Undo/redo. While a field is being edited, let the browser handle its
+      // native character-level undo instead of our operation history.
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') {
+        if (editing) return;
+        e.preventDefault();
+        if (e.shiftKey) { redo(); } else { undo(); }
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'y') {
+        if (editing) return;
+        e.preventDefault();
+        redo();
       }
       if (e.key === 'Escape' && !editing && document.getElementById('ed-photo-modal')) {
         closePhotoModal(true);
