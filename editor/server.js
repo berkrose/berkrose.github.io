@@ -253,6 +253,39 @@ function handleUploadImage(body, res) {
   sendJson(res, 200, { path: 'assets/images/' + folder + '/' + finalName });
 }
 
+// Uploads the resume PDF to the fixed path assets/resume.pdf (overwrites).
+// The "Download Resume" link on the About page points at that path.
+function handleUploadResume(body, res) {
+  const data = body && body.data;
+  if (typeof data !== 'string' || data.length === 0) {
+    sendJson(res, 400, { error: 'Missing base64 PDF data' });
+    return;
+  }
+
+  let bytes;
+  try {
+    bytes = Buffer.from(data, 'base64');
+  } catch (e) {
+    sendJson(res, 400, { error: 'Invalid base64 data' });
+    return;
+  }
+  if (bytes.length === 0 || bytes.slice(0, 5).toString('latin1') !== '%PDF-') {
+    sendJson(res, 400, { error: 'File must be a PDF' });
+    return;
+  }
+  if (bytes.length > 10 * 1024 * 1024) {
+    sendJson(res, 413, { error: 'PDF exceeds 10MB limit - export a smaller version' });
+    return;
+  }
+
+  const dest = path.join(SITE_ROOT, 'assets', 'resume.pdf');
+  const tmp = dest + '.tmp';
+  fs.mkdirSync(path.dirname(dest), { recursive: true });
+  fs.writeFileSync(tmp, bytes);
+  fs.renameSync(tmp, dest);
+  sendJson(res, 200, { path: 'assets/resume.pdf', bytes: bytes.length });
+}
+
 function handleDeleteImage(body, res) {
   const relPath = body && body.path;
   const allowed = /^assets\/images\/[a-zA-Z0-9._/-]+\.(png|jpe?g|webp)$/;
@@ -435,6 +468,9 @@ const server = http.createServer(async (req, res) => {
             return;
           case '/api/upload-image':
             handleUploadImage(body, res);
+            return;
+          case '/api/upload-resume':
+            handleUploadResume(body, res);
             return;
           case '/api/delete-image':
             handleDeleteImage(body, res);

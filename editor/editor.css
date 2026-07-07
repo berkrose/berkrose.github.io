@@ -202,6 +202,17 @@ body { padding-bottom: 84px !important; }
 }
 .ed-section-card-desc { font-size: 11px; color: #8a8a8a; }
 
+/* ── Resume upload (Download Resume button in edit mode) ─────────────────── */
+.ed-resume-btn { position: relative; outline: 1.5px dashed var(--ed-red); outline-offset: 3px; }
+.ed-resume-badge {
+  position: absolute; top: -10px; right: -6px;
+  background: var(--ed-dark); color: #fff; padding: 3px 8px;
+  font-family: var(--ed-font); font-size: 9px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.1em; white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25); pointer-events: none;
+}
+.ed-resume-missing { background: var(--ed-red); }
+
 /* ── Photos button on image frames ───────────────────────────────────────── */
 .ed-photos-btn {
   position: absolute; bottom: 10px; right: 10px; z-index: 20;

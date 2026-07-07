@@ -1328,6 +1328,61 @@
     toast('Added a ' + (type === 'textImage' ? 'text and photo' : type) + ' section - click its text to edit it.', 'ok', 5000);
   }
 
+  // ── Resume upload (the "Download Resume" button on the About page) ─────────
+  function setupResumeUpload() {
+    var link = document.querySelector('a[href$="resume.pdf"]');
+    if (!link || link.dataset.edBound) return;
+    link.dataset.edBound = '1';
+    link.classList.add('ed-resume-btn');
+    link.title = 'Click to upload a new resume PDF';
+
+    // Show whether a resume file exists yet.
+    var badge = make('span', 'ed-resume-badge', '…');
+    link.appendChild(badge);
+    fetch(link.getAttribute('href'), { method: 'HEAD' }).then(function (r) {
+      badge.textContent = r.ok ? 'Replace PDF' : 'No file yet - click to upload';
+      badge.className = 'ed-resume-badge' + (r.ok ? '' : ' ed-resume-missing');
+    }).catch(function () { badge.remove(); });
+
+    var input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'application/pdf,.pdf';
+    input.setAttribute('data-editor', '');
+    input.style.display = 'none';
+    document.body.appendChild(input);
+
+    input.addEventListener('change', function () {
+      var file = input.files && input.files[0];
+      input.value = '';
+      if (!file) return;
+      toast('Uploading resume…', 'info', 2500);
+      var reader = new FileReader();
+      reader.onload = function () {
+        var base64 = String(reader.result).split(',')[1] || '';
+        api('/api/upload-resume', { data: base64 }).then(function (res) {
+          if (res.ok) {
+            badge.textContent = 'Replace PDF';
+            badge.className = 'ed-resume-badge';
+            refreshStatus(); // new file on disk -> "not published yet" indicator
+            toast('Resume uploaded - the Download Resume button now works. Publish to put it online.', 'ok', 6000);
+          } else {
+            toast('Could not upload the resume: ' + (res.data.error || 'unknown error'), 'error', 7000);
+          }
+        }).catch(function (e) {
+          toast('Could not upload the resume: ' + e.message, 'error', 6000);
+        });
+      };
+      reader.onerror = function () { toast('Could not read that file.', 'error', 5000); };
+      reader.readAsDataURL(file);
+    });
+
+    link.addEventListener('click', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      input.click();
+    });
+  }
+
   // ── Enhance (idempotent; re-run after every render) ───────────────────────
   function enhance() {
     document.querySelectorAll('[data-content]').forEach(setupEditable);
@@ -1338,6 +1393,7 @@
     adornSections();
     setupSectionImages();
     setupProfilePhoto();
+    setupResumeUpload();
   }
 
   // ── Toolbar ───────────────────────────────────────────────────────────────
