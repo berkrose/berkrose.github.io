@@ -11,7 +11,7 @@ The profile photo stays flat at `assets/images/profile.jpg`.
 |---|---|
 | `assets/images/profile.jpg` | You at the red torii gates (Fushimi Inari, Japan) |
 
-> Note: file currently saved as `profile.jpeg` — rename to `profile.jpg` to match the src in about.html.
+> Note: file currently saved as `profile.jpeg` — rename to `profile.jpg` to match the src in index.html (the About landing page).
 
 ---
 
@@ -87,7 +87,7 @@ Sub-photos `01.jpg` through `05.jpg` appear inside the "Read More" expand sectio
 
 ## Resume
 Drop your resume PDF at: `assets/resume.pdf`
-The "Download Resume" button on about.html links to it automatically.
+The "Download Resume" button on index.html (the About landing page) links to it automatically.
 
 ---
 

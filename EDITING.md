@@ -66,7 +66,8 @@ and on the About page the biography, expertise, quote, and closing.
   the live site; while editing you'll see a small "Hidden … [Show]" bar to bring it back.
 - **Delete** — sections you added have a ✕ to remove them.
 
-Switch between the **Home** and **About** pages using the links in the bottom bar.
+Switch between the **About** (landing) and **Projects** pages using the links in the
+bottom bar. The **+ ADD PROJECT** button appears only on the Projects page.
 
 ---
 
