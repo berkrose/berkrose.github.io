@@ -1348,7 +1348,7 @@
 
     var pages = make('nav', 'ed-pages');
     var page = location.pathname.replace(/\/$/, '/index.html');
-    [['Home', '/index.html'], ['About', '/about.html']].forEach(function (p) {
+    [['About', '/index.html'], ['Projects', '/projects.html']].forEach(function (p) {
       var a = make('a', page.indexOf(p[1]) !== -1 ? 'ed-current' : '', p[0]);
       a.href = p[1];
       pages.appendChild(a);

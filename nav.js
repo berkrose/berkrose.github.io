@@ -1,6 +1,6 @@
 // ─── NAV.JS ─────────────────────────────────────────────────────────────────
 // Toggles the mobile navigation menu (the ☰ icon shown below the md breakpoint).
-// Loaded by index.html and about.html. Harmless on desktop, where the menu
+// Loaded by index.html and projects.html. Harmless on desktop, where the menu
 // button is hidden by CSS.
 // ────────────────────────────────────────────────────────────────────────────
 

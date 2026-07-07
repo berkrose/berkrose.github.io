@@ -3,13 +3,12 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Berkeley Skuratowicz — Portfolio</title>
+<title>Berkeley Skuratowicz</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Inter+Tight:wght@400;500;600;700&family=Cormorant+Garamond:ital,wght@1,600&display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <script src="content.js"></script>
 <script src="content-loader.js"></script>
-<script src="render-projects.js"></script>
 <script src="sections.js"></script>
 <script src="nav.js"></script>
 <script id="tailwind-config">
@@ -91,33 +90,6 @@
     color: #1a1c1c;
     font-family: 'Inter', sans-serif;
   }
-  .project-img {
-    filter: grayscale(20%) contrast(1.05);
-    transition: filter 0.7s ease;
-  }
-  .project-img:hover {
-    filter: grayscale(0%) contrast(1);
-  }
-  .project-entry {
-    border-top: 1px solid rgba(207, 196, 197, 0.25);
-  }
-  .thumb-img {
-    filter: grayscale(20%) contrast(1.05);
-    transition: filter 0.3s ease;
-  }
-  .thumb-img:hover {
-    filter: grayscale(0%) contrast(1);
-  }
-  .thumb-btn {
-    border-bottom: 2px solid transparent;
-    transition: border-color 0.2s ease;
-    padding: 0;
-    background: none;
-    cursor: pointer;
-  }
-  .thumb-btn.active {
-    border-bottom: 2px solid #000000;
-  }
 </style>
 </head>
 <body class="bg-surface text-on-surface antialiased">
@@ -127,58 +99,171 @@
   <div class="flex justify-between items-center w-full px-8 py-6 max-w-[1920px] mx-auto">
     <a href="index.html" class="font-bold text-lg tracking-tighter text-black" data-content="nav.logo">Berkeley Skuratowicz</a>
     <div class="hidden md:flex gap-8 items-center">
-      <a href="index.html" class="font-['Inter_Tight'] text-[13px] tracking-[0.1em] uppercase text-red-700 relative after:content-[''] after:absolute after:-bottom-1 after:left-1/2 after:-translate-x-1/2 after:w-1 after:h-1 after:bg-red-700 after:rounded-full" data-content="nav.projects">Projects</a>
-      <a href="about.html" class="font-['Inter_Tight'] text-[13px] tracking-[0.1em] uppercase text-zinc-500 hover:text-black transition-colors duration-300" data-content="nav.about">About</a>
+      <a href="projects.html" class="font-['Inter_Tight'] text-[13px] tracking-[0.1em] uppercase text-zinc-500 hover:text-black transition-colors duration-300" data-content="nav.projects">Projects</a>
+      <a href="index.html" class="font-['Inter_Tight'] text-[13px] tracking-[0.1em] uppercase text-red-700 relative after:content-[''] after:absolute after:-bottom-1 after:left-1/2 after:-translate-x-1/2 after:w-1 after:h-1 after:bg-red-700 after:rounded-full" data-content="nav.about">About</a>
     </div>
     <div class="md:hidden relative">
       <button id="nav-menu-toggle" type="button" aria-label="Menu" aria-expanded="false" aria-controls="nav-menu-panel" class="flex items-center text-black">
         <span class="material-symbols-outlined" id="nav-menu-icon">menu</span>
       </button>
       <div id="nav-menu-panel" class="hidden absolute right-0 top-full mt-3 bg-white shadow-xl border border-zinc-100 py-2 min-w-[170px]">
-        <a href="index.html" class="block px-5 py-3 font-['Inter_Tight'] text-[13px] tracking-[0.1em] uppercase text-zinc-700 hover:text-red-700 hover:bg-zinc-50 transition-colors" data-content="nav.projects">Projects</a>
-        <a href="about.html" class="block px-5 py-3 font-['Inter_Tight'] text-[13px] tracking-[0.1em] uppercase text-zinc-700 hover:text-red-700 hover:bg-zinc-50 transition-colors" data-content="nav.about">About</a>
+        <a href="projects.html" class="block px-5 py-3 font-['Inter_Tight'] text-[13px] tracking-[0.1em] uppercase text-zinc-700 hover:text-red-700 hover:bg-zinc-50 transition-colors" data-content="nav.projects">Projects</a>
+        <a href="index.html" class="block px-5 py-3 font-['Inter_Tight'] text-[13px] tracking-[0.1em] uppercase text-zinc-700 hover:text-red-700 hover:bg-zinc-50 transition-colors" data-content="nav.about">About</a>
       </div>
     </div>
   </div>
 </nav>
 
-<main class="pt-32 pb-24 max-w-[1920px] mx-auto">
+<main class="pt-32 pb-24 px-8 max-w-[1920px] mx-auto">
 
-  <!-- Hero -->
-  <section class="px-8 mb-24" data-section="hero">
-    <div class="flex items-baseline gap-6 mb-4">
-      <span class="font-['Inter_Tight'] text-[0.6875rem] tracking-[0.1em] uppercase text-secondary font-bold" data-content="hero.label">Selected Works</span>
-      <span class="font-['Inter_Tight'] text-[0.6875rem] tracking-[0.1em] uppercase text-zinc-400" data-content="hero.count">08 Projects</span>
+  <!-- Hero Profile Section -->
+  <section class="grid grid-cols-1 lg:grid-cols-12 gap-16 items-start mb-32" data-section="bio">
+    <div class="lg:col-span-5 order-2 lg:order-1">
+      <div class="space-y-8">
+        <span class="font-['Inter_Tight'] text-[0.6875rem] tracking-[0.1em] uppercase text-secondary font-bold" data-content="about.label">Biography</span>
+        <h1 class="text-[3.5rem] leading-[1.1] font-headline font-bold tracking-[-0.02em] text-primary" data-content="about.heading">Engineering and Product Design</h1>
+        <p class="text-lg leading-relaxed text-on-surface-variant max-w-xl" data-content="about.bio.0">
+          I'm a Product Design graduate student at San Francisco State University with double degrees in Mechanical and Manufacturing Engineering from Oregon State University, where I graduated summa cum laude.
+        </p>
+        <p class="text-lg leading-relaxed text-on-surface-variant max-w-xl" data-content="about.bio.1">
+          My background includes engineering internships at Oregon Freeze Dry, Blue Marble, and Bioskin, where I modeled complex liquid piping systems, designed motor housings for consumer goods, and performed failure analysis on prototypes to ensure mechanical reliability.
+        </p>
+        <p class="text-lg leading-relaxed text-on-surface-variant max-w-xl" data-content="about.bio.2">
+          I am currently working on designing community centered spaces that encourage exploration and play for all ages at Playful SF and leading the implementation of a new makerspace at the Mountain View Public Library.
+        </p>
+        <p class="text-lg leading-relaxed text-on-surface-variant max-w-xl" data-content="about.bio.3">
+          I have experience with the whole product development cycle from research and brainstorming, to prototyping and manufacturing.
+        </p>
+
+        <div class="pt-8 space-y-8">
+          <div class="h-[1px] w-full bg-outline-variant opacity-20"></div>
+          <div>
+            <h3 class="font-['Inter_Tight'] text-[0.6875rem] tracking-[0.1em] uppercase text-zinc-500 font-bold mb-6" data-content="about.contactHeading">Contact &amp; Resources</h3>
+            <div class="flex flex-col gap-4 w-full max-w-md">
+              <a class="bg-primary text-on-primary px-8 py-4 font-['Inter_Tight'] font-bold text-[12px] tracking-[0.2em] uppercase hover:bg-secondary transition-colors duration-300 flex items-center justify-center gap-3 w-full" href="assets/resume.pdf" target="_blank" rel="noopener">
+                <span class="material-symbols-outlined text-[18px]">download</span>
+                Download Resume
+              </a>
+              <div class="flex flex-row gap-4">
+                <a class="bg-primary text-on-primary px-8 py-4 font-['Inter_Tight'] font-bold text-[12px] tracking-[0.2em] uppercase hover:bg-secondary transition-colors duration-300 flex items-center justify-center gap-2 flex-1" href="https://www.linkedin.com/in/berkeley-skuratowicz" target="_blank" rel="noopener">
+                  <span class="material-symbols-outlined text-[18px]">link</span>
+                  LinkedIn
+                </a>
+                <a class="bg-primary text-on-primary px-8 py-4 font-['Inter_Tight'] font-bold text-[12px] tracking-[0.2em] uppercase hover:bg-secondary transition-colors duration-300 flex items-center justify-center gap-2 flex-1" href="mailto:berkrose@gmail.com">
+                  <span class="material-symbols-outlined text-[18px]">mail</span>
+                  Email
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
-    <h1 class="text-[5rem] md:text-[8rem] lg:text-[11rem] leading-[0.9] font-headline font-bold tracking-[-0.03em] text-primary mb-8" data-content="hero.heading">SELECTED<br>WORKS.</h1>
-    <div class="flex items-center gap-6">
-      <div class="h-[1px] w-16 bg-outline-variant opacity-40"></div>
-      <span class="font-['Inter_Tight'] text-[0.6875rem] tracking-[0.1em] uppercase text-zinc-500" data-content="hero.divider">Engineering &amp; Design / 2020–2026</span>
+
+    <div class="lg:col-span-7 order-1 lg:order-2">
+      <div class="aspect-[4/5] bg-surface-container-low overflow-hidden">
+        <img alt="Berkeley Skuratowicz at Fushimi Inari shrine in Japan" class="w-full h-full object-cover object-top grayscale contrast-110 hover:grayscale-0 transition-all duration-700" data-content-src="about.profilePhoto" src="assets/images/profile.jpeg"/>
+      </div>
+      <div class="mt-4 flex justify-between items-baseline">
+        <span class="font-['Inter_Tight'] text-[0.6875rem] tracking-[0.1em] uppercase text-zinc-500" data-content="about.location">San Francisco, CA</span>
+        <span class="font-['Inter_Tight'] text-[0.6875rem] tracking-[0.1em] uppercase text-zinc-500" data-content="about.degree">MS Product Design</span>
+      </div>
     </div>
   </section>
 
-  <!-- ============================================================
-       PROJECTS — rendered dynamically from content.js
-       by render-projects.js
-       ============================================================ -->
-  <div id="projects-container" data-section="projects"></div>
+  <!-- Experience & Expertise Grid -->
+  <section class="bg-surface-container-low -mx-8 px-8 py-32 mb-32" data-section="expertise">
+    <div class="max-w-[1920px] mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-16">
 
-  <!-- ============================================================
-       CTA — Open to New Opportunities
-       ============================================================ -->
-  <section class="px-8 py-32 mt-8 text-center border-t border-outline-variant/20" data-section="cta">
-    <span class="font-['Inter_Tight'] text-[0.6875rem] tracking-[0.1em] uppercase text-secondary font-bold block mb-6" data-content="cta.label">Currently Available</span>
-    <h2 class="text-[3rem] md:text-[5rem] lg:text-[7rem] leading-[0.95] font-headline font-bold tracking-[-0.03em] text-primary mb-12" data-content="cta.heading">OPEN TO NEW<br>OPPORTUNITIES.</h2>
-    <div class="flex flex-col sm:flex-row gap-4 justify-center">
-      <a href="mailto:berkrose@gmail.com" class="bg-primary text-on-primary px-10 py-5 font-['Inter_Tight'] font-bold text-[12px] tracking-[0.2em] uppercase hover:bg-secondary transition-colors duration-300 flex items-center justify-center gap-3">
-        <span class="material-symbols-outlined text-[18px]">mail</span>
-        <span data-content="cta.buttonContact">Get In Touch</span>
-      </a>
-      <a href="about.html" class="border border-primary text-primary px-10 py-5 font-['Inter_Tight'] font-bold text-[12px] tracking-[0.2em] uppercase hover:bg-primary hover:text-white transition-colors duration-300 flex items-center justify-center gap-3">
-        <span class="material-symbols-outlined text-[18px]">person</span>
-        <span data-content="cta.buttonAbout">About Me</span>
-      </a>
+      <!-- Expertise 01 -->
+      <div class="space-y-6">
+        <div class="flex items-center gap-4">
+          <span class="text-xs font-headline font-bold text-secondary" data-content="about.expertise.engineering.number">01</span>
+          <div class="h-[1px] flex-grow bg-outline-variant opacity-30"></div>
+        </div>
+        <h3 class="text-xl font-headline font-bold" data-content="about.expertise.engineering.title">Engineering Rigor</h3>
+        <p class="text-sm text-on-surface-variant leading-relaxed" data-content="about.expertise.engineering.description">
+          Dual degrees in Mechanical and Manufacturing Engineering providing a foundation of technical feasibility, material science, and mechanical reliability.
+        </p>
+        <ul class="space-y-2 pt-4">
+          <li class="font-['Inter_Tight'] text-[0.6875rem] tracking-[0.1em] uppercase flex items-center gap-2">
+            <span class="w-1 h-1 bg-primary"></span><span data-content="about.expertise.engineering.skills.0"> Failure Analysis</span>
+          </li>
+          <li class="font-['Inter_Tight'] text-[0.6875rem] tracking-[0.1em] uppercase flex items-center gap-2">
+            <span class="w-1 h-1 bg-primary"></span><span data-content="about.expertise.engineering.skills.1"> Piping Systems</span>
+          </li>
+          <li class="font-['Inter_Tight'] text-[0.6875rem] tracking-[0.1em] uppercase flex items-center gap-2">
+            <span class="w-1 h-1 bg-primary"></span><span data-content="about.expertise.engineering.skills.2"> CAD Modeling</span>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Expertise 02 -->
+      <div class="space-y-6">
+        <div class="flex items-center gap-4">
+          <span class="text-xs font-headline font-bold text-secondary" data-content="about.expertise.community.number">02</span>
+          <div class="h-[1px] flex-grow bg-outline-variant opacity-30"></div>
+        </div>
+        <h3 class="text-xl font-headline font-bold" data-content="about.expertise.community.title">Community Impact</h3>
+        <p class="text-sm text-on-surface-variant leading-relaxed" data-content="about.expertise.community.description">
+          Focused on community-centered spaces that encourage exploration. Bridging the gap between institutional resources and public accessibility.
+        </p>
+        <ul class="space-y-2 pt-4">
+          <li class="font-['Inter_Tight'] text-[0.6875rem] tracking-[0.1em] uppercase flex items-center gap-2">
+            <span class="w-1 h-1 bg-primary"></span><span data-content="about.expertise.community.skills.0"> Makerspace Design</span>
+          </li>
+          <li class="font-['Inter_Tight'] text-[0.6875rem] tracking-[0.1em] uppercase flex items-center gap-2">
+            <span class="w-1 h-1 bg-primary"></span><span data-content="about.expertise.community.skills.1"> Public Play Spaces</span>
+          </li>
+          <li class="font-['Inter_Tight'] text-[0.6875rem] tracking-[0.1em] uppercase flex items-center gap-2">
+            <span class="w-1 h-1 bg-primary"></span><span data-content="about.expertise.community.skills.2"> Inclusive Design</span>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Expertise 03 -->
+      <div class="space-y-6">
+        <div class="flex items-center gap-4">
+          <span class="text-xs font-headline font-bold text-secondary" data-content="about.expertise.product.number">03</span>
+          <div class="h-[1px] flex-grow bg-outline-variant opacity-30"></div>
+        </div>
+        <h3 class="text-xl font-headline font-bold" data-content="about.expertise.product.title">Product Lifecycle</h3>
+        <p class="text-sm text-on-surface-variant leading-relaxed" data-content="about.expertise.product.description">
+          Expertise spanning the full development cycle. From the abstract sparks of brainstorming to the concrete realities of high-volume manufacturing.
+        </p>
+        <ul class="space-y-2 pt-4">
+          <li class="font-['Inter_Tight'] text-[0.6875rem] tracking-[0.1em] uppercase flex items-center gap-2">
+            <span class="w-1 h-1 bg-primary"></span><span data-content="about.expertise.product.skills.0"> Prototyping</span>
+          </li>
+          <li class="font-['Inter_Tight'] text-[0.6875rem] tracking-[0.1em] uppercase flex items-center gap-2">
+            <span class="w-1 h-1 bg-primary"></span><span data-content="about.expertise.product.skills.1"> User Research</span>
+          </li>
+          <li class="font-['Inter_Tight'] text-[0.6875rem] tracking-[0.1em] uppercase flex items-center gap-2">
+            <span class="w-1 h-1 bg-primary"></span><span data-content="about.expertise.product.skills.2"> Design for Mfg</span>
+          </li>
+        </ul>
+      </div>
+
     </div>
+  </section>
+
+  <!-- Quote Section -->
+  <section class="max-w-6xl mx-auto mb-32 py-16 px-8 border-y border-outline-variant/20" data-section="quote">
+    <div class="flex flex-col items-center text-center">
+      <span class="material-symbols-outlined text-secondary opacity-30 text-5xl mb-12">format_quote</span>
+      <blockquote>
+        <p class="text-4xl md:text-6xl lg:text-7xl font-quote italic leading-tight text-primary max-w-5xl tracking-tight" data-content="about.quote.text">Good design is obvious. Great design is transparent.</p>
+        <footer class="mt-8 text-xl md:text-2xl font-quote italic text-on-surface-variant opacity-60" data-content="about.quote.attribution">— Joe Sparano</footer>
+      </blockquote>
+    </div>
+  </section>
+
+  <!-- View Projects CTA -->
+  <section class="text-center pb-8" data-section="closing">
+    <a href="projects.html" class="inline-flex items-center gap-3 bg-primary text-on-primary px-10 py-5 font-['Inter_Tight'] font-bold text-[12px] tracking-[0.2em] uppercase hover:bg-secondary transition-colors duration-300">
+      <span class="material-symbols-outlined text-[18px]">grid_view</span>
+      View All Projects
+    </a>
   </section>
 
 </main>
@@ -190,48 +275,11 @@
     <div class="flex flex-wrap gap-8">
       <a href="https://www.linkedin.com/in/berkeley-skuratowicz" target="_blank" rel="noopener" class="font-['Inter_Tight'] text-[11px] tracking-[0.1em] uppercase text-zinc-500 hover:text-red-700 transition-colors underline-offset-4 hover:underline">LinkedIn</a>
       <a href="mailto:berkrose@gmail.com" class="font-['Inter_Tight'] text-[11px] tracking-[0.1em] uppercase text-zinc-500 hover:text-red-700 transition-colors underline-offset-4 hover:underline">Email</a>
-      <a href="about.html" class="font-['Inter_Tight'] text-[11px] tracking-[0.1em] uppercase text-zinc-500 hover:text-red-700 transition-colors underline-offset-4 hover:underline">About</a>
+      <a href="projects.html" class="font-['Inter_Tight'] text-[11px] tracking-[0.1em] uppercase text-zinc-500 hover:text-red-700 transition-colors underline-offset-4 hover:underline">Projects</a>
     </div>
     <div class="font-['Inter_Tight'] text-[11px] tracking-[0.1em] uppercase text-zinc-400" data-content="footer.copyright">© 2026 Berkeley Skuratowicz</div>
   </div>
 </footer>
-
-<script>
-  function swapImage(mainId, src, thumbBtn) {
-    const mainImg = document.getElementById(mainId);
-    mainImg.style.opacity = '0';
-    setTimeout(() => {
-      mainImg.src = src;
-      const isMain = src.includes('/main.');
-      mainImg.classList.remove('object-cover', 'object-contain', 'object-bottom', 'object-top');
-      if (isMain) {
-        (mainImg.dataset.mainFit || 'object-cover').split(' ').forEach(c => mainImg.classList.add(c));
-      } else {
-        mainImg.classList.add('object-contain');
-      }
-      mainImg.style.opacity = '1';
-    }, 200);
-    const strip = thumbBtn.closest('.flex');
-    strip.querySelectorAll('.thumb-btn').forEach(b => b.classList.remove('active'));
-    thumbBtn.classList.add('active');
-  }
-
-  function toggleDetail(id, btn) {
-    const el = document.getElementById(id);
-    const label = btn.querySelector('.btn-label');
-    const icon = btn.querySelector('.btn-icon');
-    const isOpen = el.style.maxHeight !== '0px' && el.style.maxHeight !== '';
-    if (isOpen) {
-      el.style.maxHeight = '0';
-      label.textContent = 'Read More';
-      icon.textContent = 'add';
-    } else {
-      el.style.maxHeight = el.scrollHeight + 'px';
-      label.textContent = 'Read Less';
-      icon.textContent = 'remove';
-    }
-  }
-</script>
 
 </body>
 </html>

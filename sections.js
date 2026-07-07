@@ -2,7 +2,7 @@
 // Renders page section ORDER, visibility, and custom (editor-added) sections
 // from CONTENT.sections / CONTENT.sectionData. When those are absent (every
 // pre-v2 save and the original authored pages), this file is a no-op and the
-// page renders exactly as authored. Loaded by both index.html and about.html;
+// page renders exactly as authored. Loaded by both index.html and projects.html;
 // the editor uses window.renderSections() / window.defaultSections() to add,
 // move, hide, and delete sections.
 //
