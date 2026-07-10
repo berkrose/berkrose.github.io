@@ -41,6 +41,9 @@
   var breadcrumbEl = null;
   var selectedSection = null;
   var activeWorkspaceTab = 'pages';
+  var autosaveTimer = null;
+  var saveInFlight = null;
+  var autosaveState = 'saved';
   var tokenMeta = document.querySelector('meta[name="portfolio-editor-token"]');
   var sessionToken = tokenMeta ? tokenMeta.getAttribute('content') : '';
 
@@ -170,7 +173,14 @@
   // snapshot. Callers still invoke markUnsaved() after mutating.
   function markUnsaved() {
     unsaved = (lastSaved !== null && snapshot() !== lastSaved);
+    if (unsaved) scheduleAutosave();
     updateStatusText();
+  }
+
+  function scheduleAutosave(delay) {
+    clearTimeout(autosaveTimer);
+    autosaveState = 'pending';
+    autosaveTimer = setTimeout(function () { save({ silent: true }); }, delay || 1400);
   }
 
   function refreshStatus() {
@@ -184,8 +194,11 @@
   function updateStatusText() {
     if (!statusEl) return;
     var text, dotClass;
-    if (unsaved) {
-      text = 'Unsaved changes';
+    if (autosaveState === 'saving') {
+      text = 'Saving...';
+      dotClass = 'ed-dot ed-dot-unsaved';
+    } else if (unsaved) {
+      text = autosaveState === 'pending' ? 'Autosave pending' : 'Unsaved changes';
       dotClass = 'ed-dot ed-dot-unsaved';
     } else if (serverStatus && (serverStatus.dirty || serverStatus.aheadCount > 0)) {
       text = 'Saved - not published yet';
@@ -199,19 +212,142 @@
   }
 
   // ── Save / Publish / Discard ──────────────────────────────────────────────
-  function save() {
+  function save(options) {
+    options = options || {};
     if (editing) commitEdit();
-    return api('/api/content', draft).then(function (res) {
+    clearTimeout(autosaveTimer);
+    if (saveInFlight) {
+      scheduleAutosave(250);
+      return saveInFlight;
+    }
+    var sentSnapshot = snapshot();
+    autosaveState = 'saving';
+    updateStatusText();
+    saveInFlight = api('/api/content', JSON.parse(sentSnapshot)).then(function (res) {
       if (res.ok) {
-        lastSaved = snapshot();
-        unsaved = false;
-        toast('Saved', 'ok', 2200);
+        lastSaved = sentSnapshot;
+        unsaved = snapshot() !== lastSaved;
+        autosaveState = unsaved ? 'pending' : 'saved';
+        if (!options.silent) toast('Saved', 'ok', 2200);
+        if (unsaved) scheduleAutosave(300);
         return refreshStatus();
       }
+      autosaveState = 'error';
       toast('Could not save: ' + (res.data.error || 'unknown error'), 'error', 6000);
     }).catch(function (e) {
+      autosaveState = 'error';
       toast('Could not save: ' + e.message, 'error', 6000);
+    }).finally(function () {
+      saveInFlight = null;
+      updateStatusText();
     });
+    return saveInFlight;
+  }
+
+  function formatRevisionDate(value) {
+    try {
+      return new Date(value).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+    } catch (e) {
+      return value;
+    }
+  }
+
+  function restoreRevision(id, backdrop) {
+    if (!confirm('Restore this revision? Your current draft is already preserved in revision history.')) return;
+    var preserveCurrent = unsaved ? save({ silent: true }) : Promise.resolve();
+    preserveCurrent.then(function () {
+      return api('/api/revisions/restore', { id: id });
+    }).then(function (res) {
+      if (!res.ok || !res.data.content) {
+        toast('Could not restore revision: ' + (res.data.error || 'unknown error'), 'error', 6000);
+        return;
+      }
+      pushHistory();
+      restoreState(JSON.stringify(res.data.content));
+      lastSaved = snapshot();
+      unsaved = false;
+      autosaveState = 'saved';
+      if (typeof window.applyTheme === 'function') window.applyTheme(draft.theme || null);
+      if (typeof window.applyContent === 'function') window.applyContent();
+      if (typeof window.renderSections === 'function') window.renderSections();
+      rerender();
+      if (backdrop) backdrop.remove();
+      refreshStatus();
+      toast('Revision restored', 'ok', 3500);
+    });
+  }
+
+  function createCheckpoint(name, backdrop) {
+    api('/api/revisions', { name: name, content: draft }).then(function (res) {
+      if (!res.ok) {
+        toast('Could not create checkpoint: ' + (res.data.error || 'unknown error'), 'error', 6000);
+        return;
+      }
+      if (backdrop) backdrop.remove();
+      toast('Checkpoint created', 'ok', 3000);
+      openRevisionsModal();
+    });
+  }
+
+  function openRevisionsModal() {
+    var backdrop = make('div', 'ed-backdrop');
+    backdrop.id = 'ed-revisions-modal';
+    backdrop.addEventListener('click', function (e) { if (e.target === backdrop) backdrop.remove(); });
+    var modal = make('div', 'ed-modal ed-revisions-modal');
+    var head = make('div', 'ed-modal-head');
+    head.appendChild(make('h3', '', 'Revision history'));
+    var close = make('button', 'ed-modal-close', '×');
+    close.type = 'button';
+    close.addEventListener('click', function () { backdrop.remove(); });
+    head.appendChild(close);
+    modal.appendChild(head);
+
+    var checkpoint = make('div', 'ed-checkpoint-create');
+    var input = document.createElement('input');
+    input.type = 'text';
+    input.maxLength = 80;
+    input.placeholder = 'Checkpoint name, for example: Before layout changes';
+    input.setAttribute('data-editor', '');
+    var create = make('button', 'ed-btn ed-btn-save', 'Create checkpoint');
+    create.type = 'button';
+    create.addEventListener('click', function () {
+      if (!input.value.trim()) { input.focus(); return; }
+      createCheckpoint(input.value.trim(), backdrop);
+    });
+    checkpoint.appendChild(input);
+    checkpoint.appendChild(create);
+    modal.appendChild(checkpoint);
+
+    var list = make('div', 'ed-revision-list');
+    list.appendChild(make('p', 'ed-workspace-empty', 'Loading revisions...'));
+    modal.appendChild(list);
+    backdrop.appendChild(modal);
+    document.body.appendChild(backdrop);
+
+    fetch('/api/revisions', { headers: { 'X-Portfolio-Editor-Token': sessionToken } })
+      .then(function (response) { return response.json(); })
+      .then(function (data) {
+        list.innerHTML = '';
+        if (!data.revisions || !data.revisions.length) {
+          list.appendChild(make('p', 'ed-workspace-empty', 'No revisions yet. Autosave creates them as you work.'));
+          return;
+        }
+        data.revisions.forEach(function (revision) {
+          var row = make('div', 'ed-revision-row');
+          var details = make('div', 'ed-revision-details');
+          details.appendChild(make('strong', '', revision.name || (revision.kind === 'auto' ? 'Autosave' : 'Checkpoint')));
+          details.appendChild(make('span', '', formatRevisionDate(revision.createdAt) + ' · ' + revision.assetCount + ' assets'));
+          row.appendChild(details);
+          var restore = make('button', 'ed-btn ed-btn-ghost', 'Restore');
+          restore.type = 'button';
+          restore.addEventListener('click', function () { restoreRevision(revision.id, backdrop); });
+          row.appendChild(restore);
+          list.appendChild(row);
+        });
+      }).catch(function () {
+        list.innerHTML = '';
+        list.appendChild(make('p', 'ed-workspace-empty', 'Could not load revision history.'));
+      });
   }
 
   function publish() {
@@ -1909,6 +2045,12 @@
     previewBtn.id = 'ed-preview';
     previewBtn.addEventListener('click', function () { setPreviewMode(true); });
     bar.appendChild(previewBtn);
+
+    var historyBtn = make('button', 'ed-btn ed-btn-ghost', 'History');
+    historyBtn.type = 'button';
+    historyBtn.id = 'ed-revisions';
+    historyBtn.addEventListener('click', openRevisionsModal);
+    bar.appendChild(historyBtn);
 
     var status = make('span', 'ed-status');
     statusDot = make('span', 'ed-dot');

@@ -189,6 +189,49 @@ test('rejects incomplete content without replacing the saved document', async ()
   assert.equal(fs.readFileSync(path.join(fixtureRoot, 'content.js'), 'utf8'), beforeSource);
 });
 
+test('records autosaves and named checkpoints in private revision history', async () => {
+  const listResponse = await fetch(baseUrl + '/api/revisions', { headers: apiHeaders() });
+  const listBody = await listResponse.json();
+  assert.equal(listResponse.status, 200);
+  assert.ok(listBody.revisions.some((revision) => revision.kind === 'auto'));
+
+  const createResponse = await fetch(baseUrl + '/api/revisions', {
+    method: 'POST',
+    headers: apiHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify({ name: 'Known good', content: validContent('Checkpoint heading') }),
+  });
+  const created = await createResponse.json();
+  assert.equal(createResponse.status, 201);
+  assert.match(created.id, /^[a-zA-Z0-9_-]+$/);
+
+  const revisionFile = path.join(fixtureRoot, '.editor-data', 'revisions', created.id + '.json');
+  assert.equal(fs.existsSync(revisionFile), true);
+  const revision = JSON.parse(fs.readFileSync(revisionFile, 'utf8'));
+  assert.equal(revision.name, 'Known good');
+  assert.ok(revision.assets.some((asset) => asset.path === 'assets/images/profile.jpeg'));
+});
+
+test('restores a validated revision atomically', async () => {
+  const createResponse = await fetch(baseUrl + '/api/revisions', {
+    method: 'POST',
+    headers: apiHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify({ name: 'Restore target', content: validContent('Restored heading') }),
+  });
+  const created = await createResponse.json();
+
+  write('content.js', contentSource(validContent('Replace me')));
+  const restoreResponse = await fetch(baseUrl + '/api/revisions/restore', {
+    method: 'POST',
+    headers: apiHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify({ id: created.id }),
+  });
+  const restored = await restoreResponse.json();
+  assert.equal(restoreResponse.status, 200);
+  assert.equal(restored.content.hero.heading, 'Restored heading');
+  assert.match(fs.readFileSync(path.join(fixtureRoot, 'content.js'), 'utf8'), /Restored heading/);
+  assert.equal(fs.existsSync(path.join(fixtureRoot, 'content.js.tmp')), false);
+});
+
 test('blocks private project files and dotfiles', async () => {
   const paths = [
     '/.git/config',

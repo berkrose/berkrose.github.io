@@ -50,6 +50,17 @@ Made a change you didn't mean to? Use the **↺** (undo) and **↻** (redo) butt
 bottom bar, or press **Cmd+Z** to undo and **Cmd+Shift+Z** to redo. This covers text
 edits, photos, projects, sizes, and sections — right back to your last save.
 
+### Autosave and revision history
+After you finish a change, the editor automatically saves it on this computer. The
+status in the top bar moves from **Autosave pending** to **Saving...** and then to
+**Saved - not published yet**. The Save button is still available when you want to
+force an immediate save.
+
+Open **History** to see local autosave revisions. You can also create a named checkpoint
+before trying a larger redesign. Restoring a revision first preserves your current
+draft, then loads the selected version. Revision history stays on this computer and is
+never included in the public website.
+
 ### Photos
 Every project has a **PHOTOS** button on its image. Click it to:
 - **Add photos** — pick one or more image files from your computer

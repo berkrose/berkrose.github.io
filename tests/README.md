@@ -18,6 +18,8 @@ npm run verify
 - Approved public asset serving and correct HEAD behavior
 - Unsafe image destination rejection
 - Discard restoration boundaries
+- Atomic content writes, autosave revision creation, named checkpoints, asset manifests,
+  and validated revision restore
 
 `editor-server.test.js` creates a temporary Git-backed portfolio fixture. It does not
 write to or discard the real portfolio content.
