@@ -36,6 +36,8 @@
   var lastSaved = null;
   var undoBtn = null;
   var redoBtn = null;
+  var tokenMeta = document.querySelector('meta[name="portfolio-editor-token"]');
+  var sessionToken = tokenMeta ? tokenMeta.getAttribute('content') : '';
 
   // ── Small helpers ─────────────────────────────────────────────────────────
   function getPath(obj, path) {
@@ -76,7 +78,10 @@
   function api(path, body) {
     return fetch(path, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Portfolio-Editor-Token': sessionToken
+      },
       body: JSON.stringify(body || {})
     }).then(function (res) {
       return res.json().catch(function () { return {}; }).then(function (data) {
@@ -164,7 +169,9 @@
   }
 
   function refreshStatus() {
-    return fetch('/api/status').then(function (r) { return r.json(); })
+    return fetch('/api/status', {
+      headers: { 'X-Portfolio-Editor-Token': sessionToken }
+    }).then(function (r) { return r.json(); })
       .then(function (s) { serverStatus = s; updateStatusText(); })
       .catch(function () { updateStatusText(); });
   }

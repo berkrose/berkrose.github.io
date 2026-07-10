@@ -128,9 +128,12 @@ The live site updates about a minute later.
   back to the last published version.
 - **Publish needs internet.** If you're offline, Publish will tell you your changes
   are saved safely and to try again later — nothing is lost.
-- **To stop the editor**, just close the browser tab. (The little helper program it
-  started closes on its own; you can also quit it from Activity Monitor if you ever
-  want to — look for "node".)
+- **The editor is local to this computer.** It works on home, work, school, or hotspot
+  Wi-Fi, but other computers cannot connect to it. Do not expose port 4444 through
+  port forwarding or a public tunnel.
+- **To stop the editor**, close the browser tab. The small local server can remain
+  idle in the background; it is restricted to this computer. You can also stop it
+  from Activity Monitor by quitting the `node` process.
 
 ---
 

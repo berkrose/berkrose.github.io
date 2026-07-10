@@ -11,6 +11,7 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const { execFileSync, execFile } = require('child_process');
 
 const HOST = '127.0.0.1';
@@ -21,6 +22,8 @@ const PORT = parseInt(process.env.PORT, 10) || 4444;
 const SITE_ROOT = path.resolve(__dirname, '..');
 const IMAGES_ROOT = path.join(SITE_ROOT, 'assets', 'images');
 const CONTENT_FILE = path.join(SITE_ROOT, 'content.js');
+const RESUME_FILE = path.join(SITE_ROOT, 'assets', 'resume.pdf');
+const SESSION_TOKEN = crypto.randomBytes(32).toString('hex');
 
 const MAX_BODY_BYTES = 25 * 1024 * 1024; // 25MB request body cap
 const MAX_IMAGE_BYTES = 15 * 1024 * 1024; // 15MB decoded image cap
@@ -41,7 +44,14 @@ const MIME_TYPES = {
 const NO_CACHE_EXTS = new Set(['.html', '.js', '.css']);
 
 const EDITOR_INJECTION =
+  '<meta name="portfolio-editor-token" content="' + SESSION_TOKEN + '">' +
   '<link rel="stylesheet" href="/editor/editor.css"><script src="/editor/editor.js" defer></script>';
+
+const PUBLIC_ROOT_FILES = new Set([
+  'index.html', 'projects.html', 'about.html', 'content.js', 'content-loader.js',
+  'render-projects.js', 'sections.js', 'theme-config.js', 'nav.js', 'lightbox.js',
+]);
+const PUBLIC_EDITOR_FILES = new Set(['editor/editor.css', 'editor/editor.js']);
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -63,6 +73,43 @@ function sendJson(res, status, obj) {
     'Cache-Control': 'no-store',
   });
   res.end(body);
+}
+
+function setSecurityHeaders(res) {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
+}
+
+function requestOriginAllowed(req) {
+  const origin = req.headers.origin;
+  if (!origin) return true;
+  try {
+    const parsed = new URL(origin);
+    return (
+      parsed.protocol === 'http:' &&
+      (parsed.hostname === 'localhost' || parsed.hostname === HOST) &&
+      parsed.port === String(PORT)
+    );
+  } catch (e) {
+    return false;
+  }
+}
+
+function apiRequestAllowed(req) {
+  const supplied = req.headers['x-portfolio-editor-token'];
+  if (typeof supplied !== 'string' || supplied.length !== SESSION_TOKEN.length) return false;
+  return crypto.timingSafeEqual(Buffer.from(supplied), Buffer.from(SESSION_TOKEN));
+}
+
+function isPublicPath(decoded) {
+  const relative = decoded.replace(/^\/+/, '').replace(/\\/g, '/');
+  if (!relative || relative.split('/').some((segment) => !segment || segment.startsWith('.'))) {
+    return false;
+  }
+  if (PUBLIC_ROOT_FILES.has(relative) || PUBLIC_EDITOR_FILES.has(relative)) return true;
+  return relative.startsWith('assets/');
 }
 
 function readBody(req) {
@@ -182,10 +229,8 @@ async function handleContent(body, res) {
     } else {
       fs.unlinkSync(CONTENT_FILE);
     }
-    sendJson(res, 500, {
-      error: 'Written content.js failed to evaluate; previous version restored.',
-      detail: evalError,
-    });
+    console.error('content.js validation failed:', evalError);
+    sendJson(res, 500, { error: 'Content validation failed; the previous version was restored.' });
     return;
   }
 
@@ -278,7 +323,7 @@ function handleUploadResume(body, res) {
     return;
   }
 
-  const dest = path.join(SITE_ROOT, 'assets', 'resume.pdf');
+  const dest = RESUME_FILE;
   const tmp = dest + '.tmp';
   fs.mkdirSync(path.dirname(dest), { recursive: true });
   fs.writeFileSync(tmp, bytes);
@@ -345,30 +390,37 @@ function handlePublish(body, res) {
         ', but publishing to the web requires connecting a GitHub repository first.',
       published,
       pushed: false,
-      output,
     });
     return;
   }
 
   try {
     output += git(['push']);
-    sendJson(res, 200, { published, pushed: true, output });
+    sendJson(res, 200, { published, pushed: true });
   } catch (e) {
     const detail = (e.stderr ? e.stderr.toString() : '') || e.message;
+    console.error('git push failed:', detail);
     sendJson(res, 502, {
       error: 'push-failed',
       message:
         'Could not push to GitHub (are you online?). Your changes are committed locally and will publish next time.',
       published,
       pushed: false,
-      output: output + detail,
     });
   }
 }
 
 function handleDiscard(res) {
-  git(['checkout', '--', '.']);
+  // The editor only owns content.js, uploaded images, and the resume. Keep
+  // unrelated source/docs work intact if Discard is clicked.
+  git(['restore', '--worktree', '--', 'content.js', 'assets/images']);
   git(['clean', '-fd', '--', 'assets/images']);
+  try {
+    git(['ls-files', '--error-unmatch', 'assets/resume.pdf']);
+    git(['restore', '--worktree', '--', 'assets/resume.pdf']);
+  } catch (e) {
+    if (fs.existsSync(RESUME_FILE)) fs.unlinkSync(RESUME_FILE);
+  }
   sendJson(res, 200, { ok: true });
 }
 
@@ -386,6 +438,11 @@ function serveStatic(req, res, pathname) {
   }
 
   if (decoded === '/') decoded = '/index.html';
+
+  if (!isPublicPath(decoded)) {
+    sendJson(res, 404, { error: 'Not found' });
+    return;
+  }
 
   const abs = path.resolve(SITE_ROOT, '.' + decoded);
   // Path traversal guard: resolved path must stay inside the site root.
@@ -432,13 +489,17 @@ function serveStatic(req, res, pathname) {
     const buf = Buffer.from(html, 'utf8');
     headers['Content-Length'] = buf.length;
     res.writeHead(200, headers);
-    res.end(buf);
+    res.end(req.method === 'HEAD' ? undefined : buf);
     return;
   }
 
   headers['Content-Length'] = fs.statSync(filePath).size;
   res.writeHead(200, headers);
-  fs.createReadStream(filePath).pipe(res);
+  if (req.method === 'HEAD') {
+    res.end();
+  } else {
+    fs.createReadStream(filePath).pipe(res);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -446,6 +507,8 @@ function serveStatic(req, res, pathname) {
 // ---------------------------------------------------------------------------
 
 const server = http.createServer(async (req, res) => {
+  setSecurityHeaders(res);
+
   let pathname;
   try {
     pathname = new URL(req.url, 'http://localhost').pathname;
@@ -456,11 +519,20 @@ const server = http.createServer(async (req, res) => {
 
   try {
     if (pathname.startsWith('/api/')) {
+      if (!requestOriginAllowed(req) || !apiRequestAllowed(req)) {
+        sendJson(res, 403, { error: 'Editor session authorization failed. Reload the editor.' });
+        return;
+      }
       if (pathname === '/api/status' && req.method === 'GET') {
         sendJson(res, 200, handleStatus());
         return;
       }
       if (req.method === 'POST') {
+        const contentType = String(req.headers['content-type'] || '').toLowerCase();
+        if (!contentType.startsWith('application/json')) {
+          sendJson(res, 415, { error: 'API requests must use application/json' });
+          return;
+        }
         const body = await readJsonBody(req);
         switch (pathname) {
           case '/api/content':
@@ -495,8 +567,11 @@ const server = http.createServer(async (req, res) => {
     serveStatic(req, res, pathname);
   } catch (err) {
     const status = err.statusCode || 500;
+    if (status >= 500) console.error('Editor request failed:', err);
     if (!res.headersSent) {
-      sendJson(res, status, { error: err.message || 'Internal server error' });
+      sendJson(res, status, {
+        error: status >= 500 ? 'Internal editor server error' : (err.message || 'Request failed'),
+      });
     } else {
       res.end();
     }
