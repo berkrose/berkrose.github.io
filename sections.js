@@ -14,6 +14,22 @@
 
 (function () {
 
+  var RESPONSIVE_STYLE_ID = 'section-responsive-settings';
+  function ensureResponsiveStyles() {
+    if (document.getElementById(RESPONSIVE_STYLE_ID)) return;
+    var style = document.createElement('style');
+    style.id = RESPONSIVE_STYLE_ID;
+    style.textContent =
+      '@media (max-width:639px){.section-hide-mobile{display:none!important}}' +
+      '@media (min-width:640px) and (max-width:1023px){.section-hide-tablet{display:none!important}}' +
+      '@media (min-width:1024px){.section-hide-desktop{display:none!important}}' +
+      '.section-columns-grid{display:grid;grid-template-columns:1fr}' +
+      '@media (min-width:768px){.section-columns-grid[data-columns="2"]{grid-template-columns:repeat(2,minmax(0,1fr))}' +
+      '.section-columns-grid[data-columns="3"]{grid-template-columns:repeat(3,minmax(0,1fr))}' +
+      '.section-columns-grid[data-columns="4"]{grid-template-columns:repeat(4,minmax(0,1fr))}}';
+    document.head.appendChild(style);
+  }
+
   function pageId() {
     return document.getElementById('projects-container') ? 'home' : 'about';
   }
@@ -87,6 +103,7 @@
   function buildTextImageSection(id, data) {
     var sec = elc('section', 'px-8 py-20');
     var grid = elc('div', 'max-w-[1920px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 items-center');
+    grid.dataset.layoutGrid = '';
 
     var textCol = elc('div', 'lg:col-span-5 space-y-6');
     textCol.appendChild(stampedEl('span', LABEL_CLASS, data.label || '', 'sectionData.' + id + '.label'));
@@ -118,6 +135,7 @@
     var sec = elc('section', 'px-8 py-20 max-w-6xl mx-auto space-y-8');
     sec.appendChild(stampedEl('h2', HEADING_CLASS + ' text-center', data.heading || '', 'sectionData.' + id + '.heading'));
     var grid = elc('div', 'grid grid-cols-2 md:grid-cols-3 gap-4');
+    grid.dataset.layoutGrid = '';
     grid.dataset.role = 'sec-gallery';
     var imgs = data.images || [];
     if (imgs.length === 0) {
@@ -149,12 +167,31 @@
     return sec;
   }
 
+  function buildColumnsSection(id, data) {
+    var sec = elc('section', 'px-8 py-20 max-w-6xl mx-auto space-y-8');
+    sec.appendChild(stampedEl('h2', HEADING_CLASS, data.heading || '', 'sectionData.' + id + '.heading'));
+    var grid = elc('div', 'section-columns-grid gap-8');
+    grid.dataset.layoutGrid = '';
+    grid.dataset.columns = String(Math.max(1, Math.min(4, (data.columns || []).length || 2)));
+    (data.columns || []).forEach(function (column, columnIndex) {
+      var item = elc('div', 'space-y-4');
+      item.appendChild(stampedEl('h3', 'text-xl font-headline font-bold text-primary', column.heading || '', 'sectionData.' + id + '.columns.' + columnIndex + '.heading'));
+      (column.body || []).forEach(function (paragraph, paragraphIndex) {
+        item.appendChild(stampedEl('p', BODY_P_CLASS, paragraph, 'sectionData.' + id + '.columns.' + columnIndex + '.body.' + paragraphIndex));
+      });
+      grid.appendChild(item);
+    });
+    sec.appendChild(grid);
+    return sec;
+  }
+
   function buildCustomSection(id, data) {
     var sec;
     switch (data.type) {
       case 'textImage': sec = buildTextImageSection(id, data); break;
       case 'gallery':   sec = buildGallerySection(id, data); break;
       case 'quote':     sec = buildQuoteSection(id, data); break;
+      case 'columns':   sec = buildColumnsSection(id, data); break;
       default:          sec = buildTextSection(id, data); break;
     }
     sec.setAttribute('data-section', id);
@@ -162,11 +199,59 @@
     return sec;
   }
 
+  var WIDTHS = { full: '', wide: '1440px', content: '1080px', narrow: '760px' };
+  var BACKGROUNDS = {
+    plain: '',
+    tinted: 'var(--c-surface-low, #f3f3f4)',
+    accent: 'var(--c-accent, #bb0018)',
+    dark: '#161616'
+  };
+
+  function applySectionSettings(el, entry) {
+    if (!el) return;
+    var settings = entry.settings || {};
+    el.classList.toggle('section-hide-mobile', settings.mobile === false);
+    el.classList.toggle('section-hide-tablet', settings.tablet === false);
+    el.classList.toggle('section-hide-desktop', settings.desktop === false);
+
+    if (settings.width && WIDTHS[settings.width]) {
+      el.style.maxWidth = WIDTHS[settings.width];
+      el.style.marginLeft = 'auto';
+      el.style.marginRight = 'auto';
+    } else if (settings.width === 'full') {
+      el.style.removeProperty('max-width');
+      el.style.removeProperty('margin-left');
+      el.style.removeProperty('margin-right');
+    }
+    if (Number.isFinite(settings.paddingTop)) el.style.paddingTop = settings.paddingTop + 'px';
+    if (Number.isFinite(settings.paddingBottom)) el.style.paddingBottom = settings.paddingBottom + 'px';
+    if (Number.isFinite(settings.minHeight) && settings.minHeight > 0) el.style.minHeight = settings.minHeight + 'px';
+    if (settings.align) el.style.textAlign = settings.align;
+    if (settings.background && BACKGROUNDS[settings.background] !== undefined) {
+      if (BACKGROUNDS[settings.background]) el.style.background = BACKGROUNDS[settings.background];
+      else el.style.removeProperty('background');
+      var inverse = settings.background === 'accent' || settings.background === 'dark';
+      el.classList.toggle('section-inverse', inverse);
+      if (inverse) el.style.color = '#fff';
+      else el.style.removeProperty('color');
+    }
+    var grid = el.querySelector('[data-layout-grid]');
+    if (grid && Number.isFinite(settings.gap)) grid.style.gap = settings.gap + 'px';
+    if (grid && grid.classList.contains('section-columns-grid') && Number.isFinite(settings.columns)) {
+      grid.dataset.columns = String(Math.max(1, Math.min(4, settings.columns)));
+      Array.prototype.forEach.call(grid.children, function (column, index) {
+        column.style.display = index < settings.columns ? '' : 'none';
+      });
+    }
+    if (settings.anchor && /^[a-z][a-z0-9-]*$/.test(settings.anchor)) el.id = settings.anchor;
+  }
+
   // ── Render ──────────────────────────────────────────────────────────────────
   function renderSections() {
     var main = mainEl();
     if (typeof CONTENT === 'undefined' || !main) return;
     captureAuthored();
+    ensureResponsiveStyles();
     var page = pageId();
     var registry = (CONTENT.sections && CONTENT.sections[page]) || null;
 
@@ -206,6 +291,7 @@
         if (existing) existing.replaceWith(el);
         if (entry.hidden) el.style.display = 'none';
       }
+      applySectionSettings(el, entry);
       main.appendChild(el); // appendChild MOVES the node -> establishes registry order
     });
 

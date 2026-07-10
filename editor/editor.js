@@ -1426,6 +1426,109 @@
     enhance();
   }
 
+  function setSectionSetting(id, name, value) {
+    var registry = ensureSections();
+    var entry = registry.find(function (item) { return item.id === id; });
+    if (!entry) return;
+    pushHistory();
+    entry.settings = entry.settings || {};
+    entry.settings[name] = value;
+    if (name === 'columns' && draft.sectionData && draft.sectionData[id] && draft.sectionData[id].type === 'columns') {
+      var columns = draft.sectionData[id].columns = draft.sectionData[id].columns || [];
+      while (columns.length < value) {
+        columns.push({ heading: 'Column ' + (columns.length + 1), body: ['Add your content here.'] });
+      }
+    }
+    markUnsaved();
+    if (window.renderSections) window.renderSections();
+    enhance();
+  }
+
+  function sectionSettingControl(label, values, current, onChange) {
+    var wrap = make('div', 'ed-setting-group');
+    wrap.appendChild(make('div', 'ed-layout-label', label));
+    var segmented = make('div', 'ed-seg');
+    values.forEach(function (item) {
+      var button = make('button', 'ed-seg-btn' + (item[0] === current ? ' ed-active' : ''), item[1]);
+      button.type = 'button';
+      button.addEventListener('click', function () { onChange(item[0]); });
+      segmented.appendChild(button);
+    });
+    wrap.appendChild(segmented);
+    return wrap;
+  }
+
+  function openSectionLayout(id) {
+    if (editing) commitEdit();
+    var registry = ensureSections();
+    var entry = registry.find(function (item) { return item.id === id; });
+    if (!entry) return;
+    var existing = document.getElementById('ed-section-layout-modal');
+    if (existing) existing.remove();
+    var settings = entry.settings || {};
+    var backdrop = make('div', 'ed-backdrop');
+    backdrop.id = 'ed-section-layout-modal';
+    var modal = make('div', 'ed-modal ed-section-layout-modal');
+    var head = make('div', 'ed-modal-head');
+    head.appendChild(make('h3', '', 'Section layout - ' + (BUILTIN_LABELS[id] || id).replace(/[-_]/g, ' ')));
+    var close = make('button', 'ed-modal-close', '×');
+    close.type = 'button';
+    close.addEventListener('click', function () { backdrop.remove(); });
+    head.appendChild(close);
+    modal.appendChild(head);
+    var body = make('div', 'ed-section-layout-body');
+    function reopen(name, value) {
+      setSectionSetting(id, name, value);
+      backdrop.remove();
+      openSectionLayout(id);
+    }
+    body.appendChild(sectionSettingControl('Content width', [['full','Full'],['wide','Wide'],['content','Content'],['narrow','Narrow']], settings.width || 'full', function (value) { reopen('width', value); }));
+    body.appendChild(sectionSettingControl('Alignment', [['left','Left'],['center','Center'],['right','Right']], settings.align || 'left', function (value) { reopen('align', value); }));
+    body.appendChild(sectionSettingControl('Background', [['plain','Plain'],['tinted','Tinted'],['accent','Accent'],['dark','Dark']], settings.background || 'plain', function (value) { reopen('background', value); }));
+    body.appendChild(sectionSettingControl('Top spacing', [[0,'None'],[32,'S'],[64,'M'],[96,'L'],[128,'XL']], Number.isFinite(settings.paddingTop) ? settings.paddingTop : 64, function (value) { reopen('paddingTop', value); }));
+    body.appendChild(sectionSettingControl('Bottom spacing', [[0,'None'],[32,'S'],[64,'M'],[96,'L'],[128,'XL']], Number.isFinite(settings.paddingBottom) ? settings.paddingBottom : 64, function (value) { reopen('paddingBottom', value); }));
+    body.appendChild(sectionSettingControl('Content gap', [[8,'S'],[16,'M'],[32,'L'],[48,'XL'],[72,'2XL']], Number.isFinite(settings.gap) ? settings.gap : 48, function (value) { reopen('gap', value); }));
+    var sectionData = draft.sectionData && draft.sectionData[id];
+    if (sectionData && sectionData.type === 'columns') {
+      body.appendChild(sectionSettingControl('Columns', [[1,'One'],[2,'Two'],[3,'Three'],[4,'Four']], Number.isFinite(settings.columns) ? settings.columns : sectionData.columns.length, function (value) { reopen('columns', value); }));
+    }
+
+    var fields = make('div', 'ed-setting-fields');
+    var minHeightLabel = make('label', 'ed-setting-field');
+    minHeightLabel.appendChild(make('span', '', 'Minimum height (px)'));
+    var minHeight = document.createElement('input');
+    minHeight.type = 'number'; minHeight.min = '0'; minHeight.max = '1600'; minHeight.step = '20';
+    minHeight.value = settings.minHeight || 0; minHeight.setAttribute('data-editor', '');
+    minHeight.addEventListener('change', function () { reopen('minHeight', Math.max(0, Math.min(1600, Number(minHeight.value) || 0))); });
+    minHeightLabel.appendChild(minHeight);
+    var anchorLabel = make('label', 'ed-setting-field');
+    anchorLabel.appendChild(make('span', '', 'Section anchor'));
+    var anchor = document.createElement('input');
+    anchor.type = 'text'; anchor.placeholder = 'for example: experience'; anchor.value = settings.anchor || '';
+    anchor.setAttribute('data-editor', '');
+    anchor.addEventListener('change', function () {
+      var value = anchor.value.trim().toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '');
+      if (value && !/^[a-z]/.test(value)) value = 'section-' + value;
+      reopen('anchor', value);
+    });
+    anchorLabel.appendChild(anchor);
+    fields.appendChild(minHeightLabel); fields.appendChild(anchorLabel);
+    body.appendChild(fields);
+
+    var visibility = make('div', 'ed-visibility-row');
+    visibility.appendChild(make('div', 'ed-layout-label', 'Show on devices'));
+    [['desktop','Desktop'],['tablet','Tablet'],['mobile','Phone']].forEach(function (device) {
+      var label = make('label', 'ed-check-label');
+      var checkbox = document.createElement('input');
+      checkbox.type = 'checkbox'; checkbox.checked = settings[device[0]] !== false;
+      checkbox.setAttribute('data-editor', '');
+      checkbox.addEventListener('change', function () { reopen(device[0], checkbox.checked); });
+      label.appendChild(checkbox); label.appendChild(make('span', '', device[1])); visibility.appendChild(label);
+    });
+    body.appendChild(visibility);
+    modal.appendChild(body); backdrop.appendChild(modal); document.body.appendChild(backdrop);
+  }
+
   function flipSectionSide(id) {
     var data = draft.sectionData && draft.sectionData[id];
     if (!data) return;
@@ -1582,6 +1685,12 @@
       box.appendChild(up);
       box.appendChild(down);
 
+      var layout = make('button', '', '⚙');
+      layout.type = 'button';
+      layout.title = 'Section layout and responsive settings';
+      layout.addEventListener('click', function () { openSectionLayout(entry.id); });
+      box.appendChild(layout);
+
       if (entry.builtin) {
         var hide = make('button', '', '⦸');
         hide.type = 'button';
@@ -1729,7 +1838,8 @@
     [['text', 'Text', 'A heading and paragraphs'],
      ['textImage', 'Text + photo', 'Words beside a photo'],
      ['gallery', 'Photo gallery', 'A grid of photos'],
-     ['quote', 'Quote', 'A big centered quote']].forEach(function (t) {
+     ['quote', 'Quote', 'A big centered quote'],
+     ['columns', 'Columns', 'Responsive side-by-side content']].forEach(function (t) {
       var card = make('button', 'ed-section-card');
       card.type = 'button';
       card.appendChild(make('span', 'ed-section-card-title', t[1]));
@@ -1769,6 +1879,15 @@
       data = { type: type, heading: 'Gallery', images: [] };
     } else if (type === 'quote') {
       data = { type: type, text: 'A quote you love.', attribution: '- Name' };
+    } else if (type === 'columns') {
+      data = {
+        type: type,
+        heading: 'New columns section',
+        columns: [
+          { heading: 'First column', body: ['Add your content here.'] },
+          { heading: 'Second column', body: ['Add your content here.'] }
+        ]
+      };
     } else {
       data = { type: 'text', label: 'Section', heading: 'New section', body: ['Write something here.'] };
     }
