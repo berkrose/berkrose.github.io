@@ -263,5 +263,9 @@ const CONTENT = {
       "text": "Good design is obvious. Great design is transparent.",
       "attribution": "- Joe Sparano"
     }
+  },
+  "links": {
+    "linkedin": "https://www.linkedin.com/in/berkeley-skuratowicz",
+    "email": "berkrose@gmail.com"
   }
 };

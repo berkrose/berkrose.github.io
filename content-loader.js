@@ -54,6 +54,17 @@
         el.src = value;
       }
     });
+
+    // Editable link destinations: data-content-href sets href from a value,
+    // data-content-mailto sets href to mailto: + the value (an email address).
+    document.querySelectorAll('[data-content-href]').forEach(function (el) {
+      var value = resolve(CONTENT, el.getAttribute('data-content-href'));
+      if (typeof value === 'string' && value.length > 0) el.href = value;
+    });
+    document.querySelectorAll('[data-content-mailto]').forEach(function (el) {
+      var value = resolve(CONTENT, el.getAttribute('data-content-mailto'));
+      if (typeof value === 'string' && value.length > 0) el.href = 'mailto:' + value;
+    });
   }
 
   window.applyContent = applyContent;

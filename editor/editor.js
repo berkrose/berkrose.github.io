@@ -1514,6 +1514,88 @@
     document.body.appendChild(backdrop);
   }
 
+  // ── Editable links (LinkedIn / email destinations) ────────────────────────
+  var linkPopover = null;
+  function onLinkOutside(e) {
+    if (linkPopover && !linkPopover.contains(e.target)) closeLinkPopover();
+  }
+  function closeLinkPopover() {
+    if (linkPopover) { linkPopover.remove(); linkPopover = null; }
+    document.removeEventListener('mousedown', onLinkOutside, true);
+  }
+
+  function openLinkPopover(anchor, kind, path) {
+    if (editing) commitEdit();
+    closeLinkPopover();
+    var current = getPath(draft, path) || '';
+
+    var pop = make('div', 'ed-link-pop');
+    pop.appendChild(make('div', 'ed-link-pop-label', kind === 'mailto' ? 'Email address' : 'Link address (URL)'));
+    var input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'ed-link-input';
+    input.setAttribute('data-editor', '');
+    input.value = current;
+    pop.appendChild(input);
+
+    var row = make('div', 'ed-link-pop-row');
+    var save = make('button', 'ed-btn ed-btn-save', 'Save');
+    save.type = 'button';
+    var cancel = make('button', 'ed-btn ed-btn-ghost', 'Cancel');
+    cancel.type = 'button';
+    row.appendChild(save);
+    row.appendChild(cancel);
+    pop.appendChild(row);
+
+    function commit() {
+      var val = input.value.trim();
+      if (kind === 'mailto') {
+        if (val.indexOf('@') === -1) { toast('That does not look like an email address.', 'error', 4000); return; }
+      } else if (val && !/^(https?:\/\/|mailto:)/i.test(val)) {
+        val = 'https://' + val;
+      }
+      pushHistory();
+      setPath(draft, path, val);
+      if (window.applyContent) window.applyContent();
+      markUnsaved();
+      closeLinkPopover();
+      toast('Link updated', 'ok', 2500);
+    }
+    save.addEventListener('click', commit);
+    cancel.addEventListener('click', closeLinkPopover);
+    input.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); commit(); }
+      else if (e.key === 'Escape') { e.preventDefault(); closeLinkPopover(); }
+    });
+
+    document.body.appendChild(pop);
+    linkPopover = pop;
+    var r = anchor.getBoundingClientRect();
+    var top = r.bottom + 8;
+    if (top > window.innerHeight - 120) top = Math.max(8, r.top - 130);
+    pop.style.top = top + 'px';
+    pop.style.left = Math.max(8, Math.min(r.left, window.innerWidth - 290)) + 'px';
+    input.focus();
+    input.select();
+    setTimeout(function () { document.addEventListener('mousedown', onLinkOutside, true); }, 0);
+  }
+
+  function adornLinks() {
+    document.querySelectorAll('[data-content-href],[data-content-mailto]').forEach(function (a) {
+      if (a.dataset.edLinkBound) return;
+      a.dataset.edLinkBound = '1';
+      a.classList.add('ed-link-editable');
+      a.title = 'Click to change where this links';
+      var isMailto = a.hasAttribute('data-content-mailto');
+      var path = a.getAttribute(isMailto ? 'data-content-mailto' : 'data-content-href');
+      a.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        openLinkPopover(a, isMailto ? 'mailto' : 'href', path);
+      });
+    });
+  }
+
   // ── Enhance (idempotent; re-run after every render) ───────────────────────
   function enhance() {
     document.querySelectorAll('[data-content]').forEach(setupEditable);
@@ -1525,6 +1607,7 @@
     setupSectionImages();
     setupProfilePhoto();
     setupResumeUpload();
+    adornLinks();
   }
 
   // ── Toolbar ───────────────────────────────────────────────────────────────
