@@ -69,6 +69,40 @@ and on the About page the biography, expertise, quote, and closing.
 Switch between the **About** (landing) and **Projects** pages using the links in the
 bottom bar. The **+ ADD PROJECT** button appears only on the Projects page.
 
+> **Hide vs. delete — the difference.** The built-in blocks that came with the site
+> (intro, projects, contact banner, biography, etc.) can be **hidden** (⦸) but not
+> deleted, because hiding is reversible — click **Show** on the grey bar to bring one
+> back. Blocks *you* added (sections and projects) have a **✕ delete**. To tell the two
+> control clusters apart: the **SECTION** controls sit at a block's **top-left** (red),
+> and the **PROJECT** controls sit at a project's **top-right** (dark).
+
+### Design & theme
+The **THEME** button (bottom bar) opens a panel to restyle the whole site:
+- **Accent color** — pick one of the preset dots or use the rainbow swatch for any
+  custom color. It recolors links, labels, and buttons everywhere.
+- **Background** — Paper, Warm, Cool, or Cream page tints.
+- **Fonts** — five curated pairings (Modern, Grotesk, Editorial, Bold, Classic); each
+  card previews in its own font.
+- **Reset to original design** — puts everything back to the default look.
+
+Changes preview instantly. Nothing is public until you **Publish**.
+
+### Links
+Your **LinkedIn** and **email** links are editable. In edit mode they show a blue
+dashed outline — click one, type the new address, and press **Save**. Every copy of
+that link across the site updates at once (all the LinkedIn buttons, all the email
+links). Email addresses are checked for an "@", and web links get "https://" added
+automatically if you leave it off.
+
+### Project layout
+Each project has a **⚙ layout** button (top-right, next to its move/delete controls).
+It opens options for that one project:
+- **Image side** — put the photo on the Left or Right.
+- **Photo fit** — **Fill** crops the photo to fill the frame; **Fit** shows the whole
+  photo without cropping.
+- **Shape** — the photo frame's proportions (Wide / Standard / Photo / Square).
+- **Background** — a plain or lightly tinted panel behind the project.
+
 ---
 
 ## Saving vs. Publishing

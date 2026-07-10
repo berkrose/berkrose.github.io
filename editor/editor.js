@@ -605,6 +605,7 @@
       if (section.querySelector('.ed-proj-controls')) return;
 
       var box = make('div', 'ed-proj-controls');
+      box.appendChild(make('span', 'ed-ctrl-chip', 'PROJECT'));
 
       var up = make('button', '', '↑');
       up.type = 'button';
@@ -1225,6 +1226,7 @@
       if (el.querySelector(':scope > .ed-sec-controls')) return;
 
       var box = make('div', 'ed-sec-controls');
+      box.appendChild(make('span', 'ed-ctrl-chip ed-ctrl-chip-sec', 'SECTION'));
       var up = make('button', '', '↑');
       up.type = 'button';
       up.title = 'Move section up';
@@ -1241,7 +1243,7 @@
       if (entry.builtin) {
         var hide = make('button', '', '⦸');
         hide.type = 'button';
-        hide.title = 'Hide this section';
+        hide.title = "Hide this section (visitors won't see it; you can bring it back)";
         hide.addEventListener('click', function () { setSectionHidden(entry.id, true); });
         box.appendChild(hide);
       } else {
