@@ -36,6 +36,11 @@
   var lastSaved = null;
   var undoBtn = null;
   var redoBtn = null;
+  var sidebar = null;
+  var sidebarPanel = null;
+  var breadcrumbEl = null;
+  var selectedSection = null;
+  var activeWorkspaceTab = 'pages';
   var tokenMeta = document.querySelector('meta[name="portfolio-editor-token"]');
   var sessionToken = tokenMeta ? tokenMeta.getAttribute('content') : '';
 
@@ -1707,6 +1712,173 @@
     setupProfilePhoto();
     setupResumeUpload();
     adornLinks();
+    refreshLayers();
+  }
+
+  // ── Workspace shell ──────────────────────────────────────────────────────
+  function sectionLabel(el) {
+    if (!el) return 'Page';
+    var id = el.getAttribute('data-section') || el.getAttribute('data-custom-section');
+    if (id) return (BUILTIN_LABELS[id] || id).replace(/[-_]/g, ' ');
+    if (el.id === 'projects-container') return 'Projects';
+    var heading = el.querySelector('h1,h2,h3');
+    return heading && heading.textContent.trim() ? heading.textContent.trim().slice(0, 42) : 'Section';
+  }
+
+  function pageSections() {
+    var main = document.querySelector('main');
+    if (!main) return [];
+    return Array.prototype.slice.call(main.children).filter(function (el) {
+      return !el.hasAttribute('data-editor') &&
+        (el.matches('section,[data-section],[data-custom-section],#projects-container'));
+    });
+  }
+
+  function selectSection(el) {
+    if (selectedSection === el) return;
+    if (selectedSection) selectedSection.classList.remove('ed-selected-section');
+    selectedSection = el || null;
+    if (selectedSection) selectedSection.classList.add('ed-selected-section');
+    if (breadcrumbEl) breadcrumbEl.textContent = selectedSection
+      ? (isHomePage ? 'Projects / ' : 'About / ') + sectionLabel(selectedSection)
+      : (isHomePage ? 'Projects' : 'About');
+    refreshLayers();
+  }
+
+  function refreshLayers() {
+    if (!sidebarPanel || activeWorkspaceTab !== 'layers') return;
+    renderWorkspacePanel('layers');
+  }
+
+  function workspaceButton(label, description, handler, className) {
+    var button = make('button', 'ed-workspace-command' + (className ? ' ' + className : ''));
+    button.type = 'button';
+    button.appendChild(make('span', 'ed-workspace-command-label', label));
+    if (description) button.appendChild(make('span', 'ed-workspace-command-desc', description));
+    button.addEventListener('click', handler);
+    return button;
+  }
+
+  function renderWorkspacePanel(tabName) {
+    if (!sidebarPanel) return;
+    activeWorkspaceTab = tabName;
+    sidebar.querySelectorAll('.ed-workspace-tab').forEach(function (tab) {
+      tab.classList.toggle('ed-active', tab.dataset.tab === tabName);
+      tab.setAttribute('aria-selected', tab.dataset.tab === tabName ? 'true' : 'false');
+    });
+    sidebarPanel.innerHTML = '';
+
+    var titleMap = { pages: 'Pages', layers: 'Layers', add: 'Add', design: 'Design', media: 'Media' };
+    var panelHead = make('div', 'ed-workspace-panel-head');
+    panelHead.appendChild(make('h2', 'ed-workspace-title', titleMap[tabName]));
+    var closePanel = make('button', 'ed-workspace-close', 'Close');
+    closePanel.type = 'button';
+    closePanel.addEventListener('click', function () { sidebar.classList.remove('ed-mobile-open'); });
+    panelHead.appendChild(closePanel);
+    sidebarPanel.appendChild(panelHead);
+
+    if (tabName === 'pages') {
+      var pageList = make('div', 'ed-workspace-list');
+      [['About', '/index.html'], ['Projects', '/projects.html']].forEach(function (item) {
+        var link = make('a', 'ed-page-row' + ((isHomePage ? item[0] === 'Projects' : item[0] === 'About') ? ' ed-active' : ''));
+        link.href = item[1];
+        link.appendChild(make('span', 'ed-page-icon', item[0].charAt(0)));
+        link.appendChild(make('span', '', item[0]));
+        if (item[0] === 'About') link.appendChild(make('span', 'ed-page-home', 'Home'));
+        pageList.appendChild(link);
+      });
+      sidebarPanel.appendChild(pageList);
+      sidebarPanel.appendChild(make('p', 'ed-workspace-note', 'Page creation and navigation management arrive in Milestone 7.'));
+      return;
+    }
+
+    if (tabName === 'layers') {
+      var layers = make('div', 'ed-layer-list');
+      pageSections().forEach(function (el, index) {
+        var row = make('button', 'ed-layer-row' + (selectedSection === el ? ' ed-active' : ''));
+        row.type = 'button';
+        row.appendChild(make('span', 'ed-layer-index', pad2(index + 1)));
+        row.appendChild(make('span', 'ed-layer-name', sectionLabel(el)));
+        if (el.style.display === 'none') row.appendChild(make('span', 'ed-layer-state', 'Hidden'));
+        row.addEventListener('click', function () {
+          selectSection(el);
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        });
+        layers.appendChild(row);
+      });
+      sidebarPanel.appendChild(layers);
+      return;
+    }
+
+    if (tabName === 'add') {
+      var addList = make('div', 'ed-workspace-stack');
+      if (isHomePage) {
+        addList.appendChild(workspaceButton('Project', 'Add another portfolio project', addProject));
+      }
+      addList.appendChild(workspaceButton('Section', 'Text, photo, gallery, or quote', openAddSectionModal));
+      sidebarPanel.appendChild(addList);
+      return;
+    }
+
+    if (tabName === 'design') {
+      sidebarPanel.appendChild(workspaceButton('Site theme', 'Colors, backgrounds, and font pairing', openThemeModal));
+      sidebarPanel.appendChild(make('p', 'ed-workspace-note', 'Spacing, columns, and responsive layout controls arrive in Milestones 5 and 9.'));
+      return;
+    }
+
+    sidebarPanel.appendChild(make('p', 'ed-workspace-empty', 'Your centralized image and file library will appear here in Milestone 8. Project and section photo controls still work directly on the page.'));
+  }
+
+  function buildWorkspace() {
+    document.body.classList.add('ed-shell-active');
+    sidebar = make('aside', 'ed-workspace');
+    sidebar.setAttribute('aria-label', 'Editor workspace');
+
+    var head = make('div', 'ed-workspace-head');
+    head.appendChild(make('span', 'ed-workspace-mark', 'BS'));
+    var identity = make('div', 'ed-workspace-identity');
+    identity.appendChild(make('strong', '', 'Portfolio Editor'));
+    identity.appendChild(make('span', '', 'Local workspace'));
+    head.appendChild(identity);
+    sidebar.appendChild(head);
+
+    var tabs = make('div', 'ed-workspace-tabs');
+    tabs.setAttribute('role', 'tablist');
+    [['pages', 'Pages'], ['layers', 'Layers'], ['add', 'Add'], ['design', 'Design'], ['media', 'Media']]
+      .forEach(function (item) {
+        var tab = make('button', 'ed-workspace-tab', item[1]);
+        tab.type = 'button';
+        tab.dataset.tab = item[0];
+        tab.setAttribute('role', 'tab');
+        tab.addEventListener('click', function () {
+          var sameTab = activeWorkspaceTab === item[0];
+          renderWorkspacePanel(item[0]);
+          if (window.matchMedia('(max-width: 820px)').matches) {
+            sidebar.classList.toggle('ed-mobile-open', !sameTab || !sidebar.classList.contains('ed-mobile-open'));
+          }
+        });
+        tabs.appendChild(tab);
+      });
+    sidebar.appendChild(tabs);
+
+    sidebarPanel = make('div', 'ed-workspace-panel');
+    sidebar.appendChild(sidebarPanel);
+    document.body.appendChild(sidebar);
+    renderWorkspacePanel('pages');
+  }
+
+  function setPreviewMode(enabled) {
+    if (editing) commitEdit();
+    document.body.classList.toggle('ed-preview-mode', enabled);
+    if (enabled) {
+      var exit = make('button', 'ed-preview-exit', 'Exit preview');
+      exit.type = 'button';
+      exit.addEventListener('click', function () { setPreviewMode(false); });
+      document.body.appendChild(exit);
+    } else {
+      var existing = document.querySelector('.ed-preview-exit');
+      if (existing) existing.remove();
+    }
   }
 
   // ── Toolbar ───────────────────────────────────────────────────────────────
@@ -1714,15 +1886,8 @@
     var bar = make('div', 'ed-toolbar');
 
     bar.appendChild(make('span', 'ed-badge', 'EDITING'));
-
-    var pages = make('nav', 'ed-pages');
-    var page = location.pathname.replace(/\/$/, '/index.html');
-    [['About', '/index.html'], ['Projects', '/projects.html']].forEach(function (p) {
-      var a = make('a', page.indexOf(p[1]) !== -1 ? 'ed-current' : '', p[0]);
-      a.href = p[1];
-      pages.appendChild(a);
-    });
-    bar.appendChild(pages);
+    breadcrumbEl = make('span', 'ed-breadcrumb', isHomePage ? 'Projects' : 'About');
+    bar.appendChild(breadcrumbEl);
 
     var history = make('div', 'ed-history');
     undoBtn = make('button', 'ed-btn ed-btn-ghost ed-btn-icon', '↺');
@@ -1739,25 +1904,11 @@
     history.appendChild(redoBtn);
     bar.appendChild(history);
 
-    if (isHomePage) {
-      var add = make('button', 'ed-btn ed-btn-ghost', '+ Add project');
-      add.type = 'button';
-      add.id = 'ed-add-project';
-      add.addEventListener('click', addProject);
-      bar.appendChild(add);
-    }
-
-    var addSec = make('button', 'ed-btn ed-btn-ghost', '+ Add section');
-    addSec.type = 'button';
-    addSec.id = 'ed-add-section';
-    addSec.addEventListener('click', openAddSectionModal);
-    bar.appendChild(addSec);
-
-    var themeBtn = make('button', 'ed-btn ed-btn-ghost', 'Theme');
-    themeBtn.type = 'button';
-    themeBtn.id = 'ed-theme-btn';
-    themeBtn.addEventListener('click', openThemeModal);
-    bar.appendChild(themeBtn);
+    var previewBtn = make('button', 'ed-btn ed-btn-ghost', 'Preview');
+    previewBtn.type = 'button';
+    previewBtn.id = 'ed-preview';
+    previewBtn.addEventListener('click', function () { setPreviewMode(true); });
+    bar.appendChild(previewBtn);
 
     var status = make('span', 'ed-status');
     statusDot = make('span', 'ed-dot');
@@ -1795,6 +1946,7 @@
     isHomePage = !!document.getElementById('projects-container');
     pageKey = isHomePage ? 'home' : 'about';
     lastSaved = snapshot();
+    buildWorkspace();
     buildToolbar();
     enhance();
     refreshStatus();
@@ -1820,6 +1972,15 @@
       if (e.key === 'Escape' && !editing && document.getElementById('ed-photo-modal')) {
         closePhotoModal(true);
       }
+      if (e.key === 'Escape' && document.body.classList.contains('ed-preview-mode')) {
+        setPreviewMode(false);
+      }
+    });
+
+    document.addEventListener('click', function (e) {
+      if (e.target.closest('[data-editor]')) return;
+      var section = e.target.closest('main > section, main > [data-section], main > [data-custom-section], #projects-container');
+      if (section) selectSection(section);
     });
 
     window.addEventListener('beforeunload', function (e) {

@@ -15,6 +15,19 @@ Double-click **`Edit Website.command`** in the Portfolio_Website folder.
 Your browser opens the site with a dark **EDITING** bar along the bottom. That bar
 only appears in the editor — visitors never see it.
 
+The editor workspace has five tabs:
+
+- **Pages** switches between About and Projects.
+- **Layers** lists the sections on the current page. Select one to jump to it.
+- **Add** creates projects and sections.
+- **Design** opens the site theme controls.
+- **Media** is reserved for the upcoming central media library. Photo controls remain
+  directly on images for now.
+
+On a phone, tap a workspace tab to open its drawer and tap **Close** when finished.
+Use **Preview** in the top bar to hide all editing controls and see the page as a
+visitor will. Press **Esc** or **Exit preview** to return to editing.
+
 (If double-clicking shows a security warning the first time: right-click the file →
 **Open** → **Open**. macOS only asks once.)
 

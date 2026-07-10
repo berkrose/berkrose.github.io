@@ -27,6 +27,9 @@ write to or discard the real portfolio content.
 `visual-baselines/` contains full-page captures for editor and visitor modes on About
 and Projects at 1440x1000 desktop and 390x844 mobile viewports.
 
+The editor baselines were intentionally updated after Milestone 1 introduced the
+workspace sidebar, top toolbar, mobile drawer, Layers selection, and Preview mode.
+
 At baseline creation:
 
 - No horizontal overflow was detected at the mobile viewport.
