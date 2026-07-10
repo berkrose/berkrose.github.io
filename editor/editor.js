@@ -1384,6 +1384,136 @@
     });
   }
 
+  // ── Theme panel (accent / background / fonts) ─────────────────────────────
+  var themeFontsLoaded = false;
+  function loadPairingPreviewFonts() {
+    if (themeFontsLoaded) return;
+    themeFontsLoaded = true;
+    var link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.setAttribute('data-editor', '');
+    link.href = 'https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;700' +
+      '&family=Playfair+Display:wght@700&family=Archivo:wght@400;700' +
+      '&family=DM+Serif+Display&family=DM+Sans:wght@400;700' +
+      '&family=Source+Sans+3:wght@400;600&display=swap';
+    document.head.appendChild(link);
+  }
+
+  function setThemeField(name, value) {
+    pushHistory();
+    draft.theme = draft.theme || {};
+    draft.theme[name] = value;
+    if (window.applyTheme) window.applyTheme(draft.theme);
+    markUnsaved();
+  }
+
+  function resetTheme() {
+    if (!draft.theme) return;
+    pushHistory();
+    delete draft.theme;
+    if (window.applyTheme) window.applyTheme(null);
+    markUnsaved();
+  }
+
+  function openThemeModal() {
+    if (editing) commitEdit();
+    var old = document.getElementById('ed-theme-modal');
+    if (old) old.remove();
+    loadPairingPreviewFonts();
+
+    var P = window.THEME_PRESETS || { accents: [], backgrounds: {}, fonts: {} };
+    var theme = draft.theme || {};
+
+    var backdrop = make('div', 'ed-backdrop');
+    backdrop.id = 'ed-theme-modal';
+    backdrop.addEventListener('click', function (e) { if (e.target === backdrop) backdrop.remove(); });
+
+    var modal = make('div', 'ed-modal ed-modal-theme');
+    var head = make('div', 'ed-modal-head');
+    head.appendChild(make('h3', '', 'Design & theme'));
+    var close = make('button', 'ed-modal-close', '×');
+    close.type = 'button';
+    close.addEventListener('click', function () { backdrop.remove(); });
+    head.appendChild(close);
+    modal.appendChild(head);
+
+    var reopen = function () { backdrop.remove(); openThemeModal(); };
+    var body = make('div', 'ed-theme-body');
+
+    // Accent
+    body.appendChild(make('div', 'ed-theme-label', 'Accent color'));
+    var accentRow = make('div', 'ed-swatch-row');
+    (P.accents || []).forEach(function (a) {
+      var sw = make('button', 'ed-swatch');
+      sw.type = 'button';
+      sw.title = a.name;
+      sw.style.background = a.value;
+      if ((theme.accent || '#bb0018').toLowerCase() === a.value.toLowerCase()) sw.classList.add('ed-active');
+      sw.addEventListener('click', function () { setThemeField('accent', a.value); reopen(); });
+      accentRow.appendChild(sw);
+    });
+    var custom = document.createElement('input');
+    custom.type = 'color';
+    custom.className = 'ed-swatch ed-swatch-custom';
+    custom.setAttribute('data-editor', '');
+    custom.title = 'Custom color';
+    custom.value = theme.accent || '#bb0018';
+    custom.addEventListener('input', function () {
+      setThemeField('accent', custom.value);
+      accentRow.querySelectorAll('.ed-swatch:not(.ed-swatch-custom)').forEach(function (s) { s.classList.remove('ed-active'); });
+    });
+    accentRow.appendChild(custom);
+    body.appendChild(accentRow);
+
+    // Background
+    body.appendChild(make('div', 'ed-theme-label', 'Background'));
+    var bgRow = make('div', 'ed-card-row');
+    [['paper', 'Paper'], ['warm', 'Warm'], ['cool', 'Cool'], ['cream', 'Cream']].forEach(function (b) {
+      var preset = P.backgrounds[b[0]] || { surface: '#fff', low: '#eee' };
+      var card = make('button', 'ed-bg-card');
+      card.type = 'button';
+      card.style.background = preset.surface;
+      if ((theme.background || 'paper') === b[0]) card.classList.add('ed-active');
+      var dot = make('span', 'ed-bg-dot');
+      dot.style.background = preset.low;
+      card.appendChild(dot);
+      card.appendChild(make('span', 'ed-bg-name', b[1]));
+      card.addEventListener('click', function () { setThemeField('background', b[0]); reopen(); });
+      bgRow.appendChild(card);
+    });
+    body.appendChild(bgRow);
+
+    // Fonts
+    body.appendChild(make('div', 'ed-theme-label', 'Fonts'));
+    var fontList = make('div', 'ed-font-list');
+    [['modern', 'Modern'], ['grotesk', 'Grotesk'], ['editorial', 'Editorial'], ['archivo', 'Bold'], ['classic', 'Classic']].forEach(function (f) {
+      var fp = P.fonts[f[0]] || { headline: 'sans-serif', body: 'sans-serif' };
+      var card = make('button', 'ed-font-card');
+      card.type = 'button';
+      if ((theme.fonts || 'modern') === f[0]) card.classList.add('ed-active');
+      var big = make('span', 'ed-font-big', 'Aa');
+      big.style.fontFamily = "'" + fp.headline + "', serif";
+      var meta = make('span', 'ed-font-meta', f[1] + '  -  ' + fp.headline + ' / ' + fp.body);
+      meta.style.fontFamily = "'" + fp.body + "', sans-serif";
+      card.appendChild(big);
+      card.appendChild(meta);
+      card.addEventListener('click', function () { setThemeField('fonts', f[0]); reopen(); });
+      fontList.appendChild(card);
+    });
+    body.appendChild(fontList);
+    modal.appendChild(body);
+
+    var foot = make('div', 'ed-modal-foot');
+    var resetBtn = make('button', 'ed-btn ed-btn-ghost', 'Reset to original design');
+    resetBtn.type = 'button';
+    resetBtn.addEventListener('click', function () { resetTheme(); reopen(); });
+    foot.appendChild(resetBtn);
+    modal.appendChild(foot);
+
+    backdrop.appendChild(modal);
+    document.body.appendChild(backdrop);
+  }
+
   // ── Enhance (idempotent; re-run after every render) ───────────────────────
   function enhance() {
     document.querySelectorAll('[data-content]').forEach(setupEditable);
@@ -1440,6 +1570,12 @@
     addSec.id = 'ed-add-section';
     addSec.addEventListener('click', openAddSectionModal);
     bar.appendChild(addSec);
+
+    var themeBtn = make('button', 'ed-btn ed-btn-ghost', 'Theme');
+    themeBtn.type = 'button';
+    themeBtn.id = 'ed-theme-btn';
+    themeBtn.addEventListener('click', openThemeModal);
+    bar.appendChild(themeBtn);
 
     var status = make('span', 'ed-status');
     statusDot = make('span', 'ed-dot');
