@@ -166,6 +166,10 @@ The live site updates about a minute later.
 - All website text lives in `content.js` — the editor writes to it for you. Text
   sizes live under a `styles` key, and the section layout under `sections` /
   `sectionData`; all of it is created for you as you edit.
+- The editor also maintains a private versioned document at `.editor-data/site.json`.
+  It organizes the same content into stable pages, sections, columns, blocks, and media
+  records for the expanded editor. The public site continues using `content.js` during
+  the migration, so existing pages remain compatible.
 - Project sections are drawn by `render-projects.js`, and page section order plus any
   sections you add are drawn by `sections.js` — both from `content.js`, so nothing
   needs HTML editing.

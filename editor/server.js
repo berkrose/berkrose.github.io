@@ -13,6 +13,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { execFileSync, execFile } = require('child_process');
+const { migrateLegacy, validateDocument } = require('./shared/model');
 
 const HOST = '127.0.0.1';
 const PORT = parseInt(process.env.PORT, 10) || 4444;
@@ -27,6 +28,7 @@ const CONTENT_FILE = path.join(SITE_ROOT, 'content.js');
 const RESUME_FILE = path.join(SITE_ROOT, 'assets', 'resume.pdf');
 const EDITOR_DATA_ROOT = path.join(SITE_ROOT, '.editor-data');
 const REVISIONS_ROOT = path.join(EDITOR_DATA_ROOT, 'revisions');
+const DOCUMENT_FILE = path.join(EDITOR_DATA_ROOT, 'site.json');
 const SESSION_TOKEN = crypto.randomBytes(32).toString('hex');
 
 const MAX_BODY_BYTES = 25 * 1024 * 1024; // 25MB request body cap
@@ -204,6 +206,28 @@ async function writeContentAtomic(content) {
   fs.renameSync(tmp, CONTENT_FILE);
 }
 
+function readStructuredDocument() {
+  if (!fs.existsSync(DOCUMENT_FILE)) return null;
+  try {
+    const document = JSON.parse(fs.readFileSync(DOCUMENT_FILE, 'utf8'));
+    return validateDocument(document).length ? null : document;
+  } catch (error) {
+    console.error('Could not read structured document:', error.message);
+    return null;
+  }
+}
+
+function writeStructuredDocument(content) {
+  const document = migrateLegacy(content, readStructuredDocument());
+  const errors = validateDocument(document);
+  if (errors.length) throw new Error('Structured document validation failed: ' + errors.join('; '));
+  fs.mkdirSync(EDITOR_DATA_ROOT, { recursive: true });
+  const tmp = DOCUMENT_FILE + '.tmp-' + process.pid;
+  fs.writeFileSync(tmp, JSON.stringify(document, null, 2), 'utf8');
+  fs.renameSync(tmp, DOCUMENT_FILE);
+  return document;
+}
+
 function collectAssetManifest() {
   const assets = [];
   function walk(dir) {
@@ -321,8 +345,24 @@ async function handleContent(body, res) {
     return;
   }
   await writeContentAtomic(body);
+  const document = writeStructuredDocument(body);
   const revision = createRevision(body, { kind: 'auto' });
-  sendJson(res, 200, { ok: true, revisionId: revision.id, savedAt: revision.createdAt });
+  sendJson(res, 200, {
+    ok: true,
+    revisionId: revision.id,
+    savedAt: revision.createdAt,
+    documentVersion: document.schemaVersion,
+  });
+}
+
+function handleStructuredDocument(res) {
+  let document = readStructuredDocument();
+  if (!document) {
+    const source = fs.readFileSync(CONTENT_FILE, 'utf8');
+    const content = new Function(source + '; return CONTENT;')();
+    document = writeStructuredDocument(content);
+  }
+  sendJson(res, 200, { document });
 }
 
 function handleListRevisions(res) {
@@ -662,6 +702,10 @@ const server = http.createServer(async (req, res) => {
       }
       if (pathname === '/api/revisions' && req.method === 'GET') {
         handleListRevisions(res);
+        return;
+      }
+      if (pathname === '/api/document' && req.method === 'GET') {
+        handleStructuredDocument(res);
         return;
       }
       if (req.method === 'POST') {

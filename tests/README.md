@@ -20,6 +20,8 @@ npm run verify
 - Discard restoration boundaries
 - Atomic content writes, autosave revision creation, named checkpoints, asset manifests,
   and validated revision restore
+- Deterministic legacy-to-structured migration, stable IDs, graph validation, and exact
+  legacy-content round trips
 
 `editor-server.test.js` creates a temporary Git-backed portfolio fixture. It does not
 write to or discard the real portfolio content.

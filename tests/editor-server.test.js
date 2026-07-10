@@ -176,6 +176,16 @@ test('saves and validates a complete content document', async () => {
   });
   assert.equal(response.status, 200);
   assert.match(fs.readFileSync(path.join(fixtureRoot, 'content.js'), 'utf8'), /Saved heading/);
+  assert.equal(fs.existsSync(path.join(fixtureRoot, '.editor-data', 'site.json')), true);
+});
+
+test('serves a validated structured document to the authorized editor', async () => {
+  const response = await fetch(baseUrl + '/api/document', { headers: apiHeaders() });
+  const body = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(body.document.schemaVersion, 1);
+  assert.equal(body.document.legacyContent.hero.heading, 'Saved heading');
+  assert.deepEqual(Object.keys(body.document.pages).sort(), ['about', 'projects']);
 });
 
 test('rejects incomplete content without replacing the saved document', async () => {
