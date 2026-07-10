@@ -19,7 +19,9 @@ const PORT = parseInt(process.env.PORT, 10) || 4444;
 
 // Site root is the parent of this editor/ directory — never process.cwd(),
 // so the server works no matter where it is launched from.
-const SITE_ROOT = path.resolve(__dirname, '..');
+const SITE_ROOT = process.env.PORTFOLIO_SITE_ROOT
+  ? path.resolve(process.env.PORTFOLIO_SITE_ROOT)
+  : path.resolve(__dirname, '..');
 const IMAGES_ROOT = path.join(SITE_ROOT, 'assets', 'images');
 const CONTENT_FILE = path.join(SITE_ROOT, 'content.js');
 const RESUME_FILE = path.join(SITE_ROOT, 'assets', 'resume.pdf');

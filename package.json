@@ -1,0 +1,9 @@
+{
+  "name": "berkeley-portfolio",
+  "private": true,
+  "scripts": {
+    "check": "node --check editor/server.js && node --check editor/editor.js",
+    "test": "node --test --test-reporter=spec tests/*.test.js",
+    "verify": "npm run check && npm test"
+  }
+}
