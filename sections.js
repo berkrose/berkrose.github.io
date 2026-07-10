@@ -55,14 +55,14 @@
     return n;
   }
 
-  var LABEL_CLASS = "font-['Inter_Tight'] text-[0.6875rem] tracking-[0.15em] uppercase text-secondary font-bold block";
+  var LABEL_CLASS = "font-label text-[0.6875rem] tracking-[0.15em] uppercase text-secondary font-bold block";
   var HEADING_CLASS = "text-3xl md:text-4xl font-headline font-bold tracking-[-0.02em] text-primary";
   var BODY_P_CLASS = "text-sm text-on-surface-variant leading-relaxed";
 
   function imagePlaceholderEl() {
     var wrap = elc('div', 'w-full h-full flex flex-col items-center justify-center gap-4');
     wrap.appendChild(elc('span', 'material-symbols-outlined text-[64px] text-zinc-300', 'image'));
-    wrap.appendChild(elc('span', "font-['Inter_Tight'] text-[0.6875rem] tracking-[0.1em] uppercase text-zinc-300", 'Image Coming Soon'));
+    wrap.appendChild(elc('span', "font-label text-[0.6875rem] tracking-[0.1em] uppercase text-zinc-300", 'Image Coming Soon'));
     return wrap;
   }
 

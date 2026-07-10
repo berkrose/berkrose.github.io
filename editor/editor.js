@@ -131,6 +131,7 @@
     var modal = document.getElementById('ed-photo-modal');
     if (modal) modal.remove();
     modalState = null;
+    if (typeof window.applyTheme === 'function') window.applyTheme(draft.theme || null);
     if (typeof window.applyContent === 'function') window.applyContent();
     if (typeof window.renderSections === 'function') window.renderSections();
     rerender();

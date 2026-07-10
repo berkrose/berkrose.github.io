@@ -76,7 +76,7 @@
   function imagePlaceholder(icon) {
     const wrap = el("div", "w-full h-full flex flex-col items-center justify-center gap-4");
     wrap.appendChild(el("span", "material-symbols-outlined text-[64px] text-zinc-300", icon));
-    wrap.appendChild(el("span", "font-['Inter_Tight'] text-[0.6875rem] tracking-[0.1em] uppercase text-zinc-300", "Image Coming Soon"));
+    wrap.appendChild(el("span", "font-label text-[0.6875rem] tracking-[0.1em] uppercase text-zinc-300", "Image Coming Soon"));
     return wrap;
   }
 
@@ -150,7 +150,7 @@
     const tagRow = el("div", "flex flex-wrap gap-2 mb-4");
     tagRow.dataset.role = "tags";
     (project.tags || []).forEach(function (tag, i) {
-      tagRow.appendChild(stamped("span", "font-['Inter_Tight'] text-[0.6875rem] tracking-[0.1em] uppercase text-zinc-500 border border-zinc-200 px-3 py-1", tag, cp + "tags." + i));
+      tagRow.appendChild(stamped("span", "font-label text-[0.6875rem] tracking-[0.1em] uppercase text-zinc-500 border border-zinc-200 px-3 py-1", tag, cp + "tags." + i));
     });
     body.appendChild(tagRow);
     body.appendChild(stamped("h2", "text-3xl md:text-4xl font-headline font-bold tracking-[-0.02em] mb-6", project.title, cp + "title"));
@@ -160,9 +160,9 @@
     // Institution + year
     const metaWrap = el("div", "pt-4");
     const metaRow = el("div", "flex items-center gap-3 text-zinc-400");
-    metaRow.appendChild(stamped("span", "font-['Inter_Tight'] text-[0.6875rem] tracking-[0.1em] uppercase", project.institution, cp + "institution"));
+    metaRow.appendChild(stamped("span", "font-label text-[0.6875rem] tracking-[0.1em] uppercase", project.institution, cp + "institution"));
     metaRow.appendChild(el("span", "w-1 h-1 bg-zinc-300 rounded-full"));
-    metaRow.appendChild(stamped("span", "font-['Inter_Tight'] text-[0.6875rem] tracking-[0.1em] uppercase", project.year, cp + "year"));
+    metaRow.appendChild(stamped("span", "font-label text-[0.6875rem] tracking-[0.1em] uppercase", project.year, cp + "year"));
     metaWrap.appendChild(metaRow);
     col.appendChild(metaWrap);
 
@@ -180,7 +180,7 @@
     col.appendChild(detail);
 
     // Read More / Read Less toggle
-    const toggle = el("button", "flex items-center gap-2 font-['Inter_Tight'] text-[0.6875rem] tracking-[0.1em] uppercase text-primary hover:text-secondary transition-colors duration-300");
+    const toggle = el("button", "flex items-center gap-2 font-label text-[0.6875rem] tracking-[0.1em] uppercase text-primary hover:text-secondary transition-colors duration-300");
     toggle.appendChild(el("span", "btn-label", "Read More"));
     toggle.appendChild(el("span", "material-symbols-outlined text-[16px] btn-icon", "add"));
     toggle.addEventListener("click", function () {
