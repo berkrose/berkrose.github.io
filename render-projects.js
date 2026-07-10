@@ -191,24 +191,66 @@
     return col;
   }
 
+  const ASPECTS = {
+    "16/10": "aspect-[16/10]", "4/3": "aspect-[4/3]",
+    "3/2": "aspect-[3/2]", "1/1": "aspect-square"
+  };
+
   function buildSection(key, project, index) {
     const overrides = PROJECT_LAYOUTS[key] || {};
-    const side = overrides.side || (index % 2 === 0 ? "left" : "right");
+    // Per-project user overrides (from the editor's Layout panel) win over the
+    // authored PROJECT_LAYOUTS presets, which win over the auto-alternate default.
+    const user = project.layout || {};
     const idKey = overrides.idKey || key;
+    const side = user.side || overrides.side || (index % 2 === 0 ? "left" : "right");
+
+    let sectionClass = overrides.sectionClass || "project-entry px-8 py-20 mb-4";
+    let gridClass = overrides.gridClass || "grid grid-cols-1 lg:grid-cols-12 gap-12 items-center";
+    let frameClass = overrides.frameClass || "aspect-[16/10] overflow-hidden bg-surface";
+    let imageColClass, textColClass, imageFirst;
+
+    if (user.side) {
+      // Explicit side forces a clean standard two-column recompute (drops any
+      // preset-specific column classes so the flip is predictable).
+      imageFirst = false;
+      imageColClass = side === "right" ? "lg:col-span-7 order-1 lg:order-2" : "lg:col-span-7 order-1";
+      textColClass = side === "right" ? "lg:col-span-5 order-2 lg:order-1 space-y-8" : "lg:col-span-5 order-2 space-y-8";
+    } else {
+      imageFirst = overrides.imageFirst || false;
+      imageColClass = overrides.imageColClass ||
+        (side === "right" ? "lg:col-span-7 order-1 lg:order-2" : "lg:col-span-7 order-1");
+      textColClass = overrides.textColClass ||
+        (side === "right" ? "lg:col-span-5 order-2 lg:order-1 space-y-8" : "lg:col-span-5 order-2 space-y-8");
+    }
+
+    // Aspect override: swap the frame's aspect token(s) for the chosen one.
+    if (ASPECTS[user.aspect]) {
+      frameClass = frameClass.replace(/(?:md:)?aspect-\[[^\]]*\]|aspect-square/g, "").replace(/\s+/g, " ").trim();
+      frameClass = ASPECTS[user.aspect] + " " + frameClass;
+    }
+
+    // Background tint override.
+    if (user.tint === true) {
+      sectionClass = "project-entry bg-surface-container-low px-8 py-20 mb-4";
+      gridClass = "max-w-[1920px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 items-center";
+      if (/bg-surface(?![a-z-])/.test(frameClass)) frameClass = frameClass.replace(/bg-surface(?![a-z-])/, "bg-surface-container-low");
+      else frameClass += " bg-surface-container-low";
+    } else if (user.tint === false) {
+      sectionClass = "project-entry px-8 py-20 mb-4";
+      gridClass = "grid grid-cols-1 lg:grid-cols-12 gap-12 items-center";
+    }
 
     const layout = {
       key: key,
       idKey: idKey,
       detailId: overrides.detailId || idKey + "-detail",
       icon: overrides.icon || "image",
-      imageFirst: overrides.imageFirst || false,
-      sectionClass: overrides.sectionClass || "project-entry px-8 py-20 mb-4",
-      gridClass: overrides.gridClass || "grid grid-cols-1 lg:grid-cols-12 gap-12 items-center",
-      frameClass: overrides.frameClass || "aspect-[16/10] overflow-hidden bg-surface",
-      imageColClass: overrides.imageColClass ||
-        (side === "right" ? "lg:col-span-7 order-1 lg:order-2" : "lg:col-span-7 order-1"),
-      textColClass: overrides.textColClass ||
-        (side === "right" ? "lg:col-span-5 order-2 lg:order-1 space-y-8" : "lg:col-span-5 order-2 space-y-8")
+      imageFirst: imageFirst,
+      sectionClass: sectionClass,
+      gridClass: gridClass,
+      frameClass: frameClass,
+      imageColClass: imageColClass,
+      textColClass: textColClass
     };
 
     const section = el("section", layout.sectionClass);

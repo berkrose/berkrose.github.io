@@ -618,9 +618,14 @@
       down.disabled = i === sections.length - 1;
       down.addEventListener('click', function () { moveProject(key, 1); });
 
+      var layoutBtn = make('button', '', '⚙');
+      layoutBtn.type = 'button';
+      layoutBtn.title = 'Layout options (image side, shape, background)';
+      layoutBtn.addEventListener('click', function () { openLayoutPopover(key); });
+
       var del = make('button', 'ed-proj-delete', '✕');
       del.type = 'button';
-      del.title = 'Delete this project';
+      del.title = 'Delete this project (removes it from the site)';
       del.addEventListener('click', function () {
         var title = draft.projects[key].title || key;
         if (!confirm('Delete the project "' + title + '"? Its photos stay on this computer, but the project disappears from the site.')) return;
@@ -634,9 +639,94 @@
 
       box.appendChild(up);
       box.appendChild(down);
+      box.appendChild(layoutBtn);
       box.appendChild(del);
       section.appendChild(box);
     });
+  }
+
+  // ── Per-project layout popover ────────────────────────────────────────────
+  var layoutPopover = null;
+  function onLayoutOutside(e) {
+    if (layoutPopover && !layoutPopover.contains(e.target)) closeLayoutPopover();
+  }
+  function closeLayoutPopover() {
+    if (layoutPopover) { layoutPopover.remove(); layoutPopover = null; }
+    document.removeEventListener('mousedown', onLayoutOutside, true);
+  }
+
+  // Read the project's current effective layout from the rendered DOM so the
+  // popover highlights match what's on screen (preset or override).
+  function currentProjLayout(key) {
+    var section = document.querySelector('[data-project-key="' + key + '"]');
+    var img = section && section.querySelector('.project-img');
+    var frame = section && section.querySelector('[data-role="image-frame"]');
+    var imageCol = frame && frame.parentElement;
+    var fit = (img && img.dataset.mainFit) || draft.projects[key].imageFit || 'object-cover';
+    var aspect = '16/10';
+    if (frame) {
+      if (frame.className.indexOf('aspect-square') !== -1) aspect = '1/1';
+      else { var m = frame.className.match(/aspect-\[(\d+\/\d+)\]/); if (m) aspect = m[1]; }
+    }
+    return {
+      side: (imageCol && imageCol.className.indexOf('lg:order-2') !== -1) ? 'right' : 'left',
+      fit: fit.indexOf('contain') !== -1 ? 'object-contain' : 'object-cover',
+      aspect: aspect,
+      tint: !!(section && /bg-surface-container-low/.test(section.className))
+    };
+  }
+
+  function setProjLayout(key, field, value) {
+    pushHistory();
+    if (field === 'fit') {
+      draft.projects[key].imageFit = value;
+    } else {
+      draft.projects[key].layout = draft.projects[key].layout || {};
+      draft.projects[key].layout[field] = value;
+    }
+    markUnsaved();
+    rerender();
+    openLayoutPopover(key); // reopen anchored to the rebuilt section
+  }
+
+  function openLayoutPopover(key) {
+    if (editing) commitEdit();
+    closeLayoutPopover();
+    var section = document.querySelector('[data-project-key="' + key + '"]');
+    if (!section) return;
+    var cur = currentProjLayout(key);
+
+    var pop = make('div', 'ed-layout-pop');
+    pop.appendChild(make('div', 'ed-layout-title', 'Layout - ' + (draft.projects[key].title || key)));
+
+    function group(label, options, activeVal, field) {
+      pop.appendChild(make('div', 'ed-layout-label', label));
+      var row = make('div', 'ed-seg');
+      options.forEach(function (opt) {
+        var b = make('button', 'ed-seg-btn' + (opt.val === activeVal ? ' ed-active' : ''), opt.name);
+        b.type = 'button';
+        b.addEventListener('click', function () { setProjLayout(key, field, opt.val); });
+        row.appendChild(b);
+      });
+      pop.appendChild(row);
+    }
+
+    group('Image side', [{ name: 'Left', val: 'left' }, { name: 'Right', val: 'right' }], cur.side, 'side');
+    group('Photo fit', [{ name: 'Fill', val: 'object-cover' }, { name: 'Fit', val: 'object-contain' }], cur.fit, 'fit');
+    group('Shape', [{ name: 'Wide', val: '16/10' }, { name: 'Standard', val: '4/3' }, { name: 'Photo', val: '3/2' }, { name: 'Square', val: '1/1' }], cur.aspect, 'aspect');
+    group('Background', [{ name: 'Plain', val: false }, { name: 'Tinted', val: true }], cur.tint, 'tint');
+
+    var done = make('button', 'ed-btn ed-btn-save', 'Done');
+    done.type = 'button';
+    done.addEventListener('click', closeLayoutPopover);
+    pop.appendChild(done);
+
+    document.body.appendChild(pop);
+    layoutPopover = pop;
+    var r = section.getBoundingClientRect();
+    pop.style.top = Math.max(70, Math.min(r.top + 46, window.innerHeight - 340)) + 'px';
+    pop.style.right = '20px';
+    setTimeout(function () { document.addEventListener('mousedown', onLayoutOutside, true); }, 0);
   }
 
   function moveProject(key, dir) {

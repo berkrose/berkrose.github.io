@@ -213,6 +213,32 @@ body { padding-bottom: 84px !important; }
 }
 .ed-resume-missing { background: var(--ed-red); }
 
+/* ── Per-project layout popover ───────────────────────────────────────────── */
+.ed-layout-pop {
+  position: fixed; z-index: 2147483646; width: 250px;
+  background: var(--ed-dark); border: 1px solid #3a3a3a; border-radius: 6px;
+  padding: 14px; box-shadow: 0 10px 30px rgba(0,0,0,.4);
+  display: flex; flex-direction: column; gap: 6px;
+}
+.ed-layout-title {
+  font-family: var(--ed-font); font-size: 11px; font-weight: 700; color: #fff;
+  margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ed-layout-label {
+  font-family: var(--ed-font); font-size: 9px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.1em; color: var(--ed-muted);
+  margin-top: 6px;
+}
+.ed-seg { display: flex; gap: 3px; }
+.ed-seg-btn {
+  flex: 1; padding: 6px 4px; font-family: var(--ed-font); font-size: 11px;
+  color: #ccc; background: #262626; border: 1px solid #3a3a3a; cursor: pointer;
+  border-radius: 3px;
+}
+.ed-seg-btn:hover { background: #333; color: #fff; }
+.ed-seg-btn.ed-active { background: var(--ed-red); border-color: var(--ed-red); color: #fff; }
+.ed-layout-pop .ed-btn-save { margin-top: 10px; }
+
 /* ── Editable links ───────────────────────────────────────────────────────── */
 .ed-link-editable { outline: 1.5px dashed #2563eb; outline-offset: 3px; cursor: pointer; }
 .ed-link-pop {
