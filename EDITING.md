@@ -77,6 +77,8 @@ To change your **profile photo** on the About page, click it while editing.
   a title, then click its text and Photos to fill it in.
 - **Move / Delete** — each project has ↑ ↓ ✕ controls in its top-right corner.
   Projects renumber themselves automatically.
+- **Duplicate / Copy** — use **⧉** to duplicate a project beside the original or **□**
+  to copy it. Open the **Add** tab to paste a copied project.
 
 ### Sections
 A "section" is a big block of the page — the intro, the projects, the contact banner,
@@ -89,6 +91,14 @@ and on the About page the biography, expertise, quote, and closing.
 - **Hide** — built-in sections have a hide button (⦸). A hidden section disappears from
   the live site; while editing you'll see a small "Hidden … [Show]" bar to bring it back.
 - **Delete** — sections you added have a ✕ to remove them.
+- **Duplicate / Copy** — custom sections have **⧉** and **□** controls. Copied sections
+  can be pasted from the Add tab on either page.
+- **Reusable templates** — use **★** on a custom section to save its content and styling
+  as a template. Saved templates appear in the Add Section picker.
+
+The **Layers** tab also supports section reordering with arrow buttons or drag and drop.
+Header and Footer appear there as **Global** layers because their content is shared on
+every page.
 
 Switch between the **About** (landing) and **Projects** pages using the links in the
 bottom bar. The **+ ADD PROJECT** button appears only on the Projects page.

@@ -44,6 +44,8 @@
   var autosaveTimer = null;
   var saveInFlight = null;
   var autosaveState = 'saved';
+  var CLIPBOARD_KEY = 'portfolio-editor-clipboard';
+  var TEMPLATE_KEY = 'portfolio-editor-section-templates';
   var tokenMeta = document.querySelector('meta[name="portfolio-editor-token"]');
   var sessionToken = tokenMeta ? tokenMeta.getAttribute('content') : '';
 
@@ -644,6 +646,86 @@
     draft.projects = next;
   }
 
+  function cloneJson(value) {
+    return JSON.parse(JSON.stringify(value));
+  }
+
+  function copyScopedStyles(sourcePrefix, targetPrefix) {
+    if (!draft.styles) return;
+    Object.keys(draft.styles).forEach(function (path) {
+      if (path.indexOf(sourcePrefix) !== 0) return;
+      draft.styles[targetPrefix + path.slice(sourcePrefix.length)] = cloneJson(draft.styles[path]);
+    });
+  }
+
+  function setEditorClipboard(payload) {
+    sessionStorage.setItem(CLIPBOARD_KEY, JSON.stringify(payload));
+    if (activeWorkspaceTab === 'add') renderWorkspacePanel('add');
+  }
+
+  function getEditorClipboard() {
+    try { return JSON.parse(sessionStorage.getItem(CLIPBOARD_KEY) || 'null'); }
+    catch (e) { return null; }
+  }
+
+  function uniqueProjectKey(title) {
+    var slug = String(title || 'project').toLowerCase().replace(/[^a-z0-9]+/g, '') || 'project';
+    var key = slug;
+    var number = 2;
+    while (Object.prototype.hasOwnProperty.call(draft.projects, key)) {
+      key = slug + number;
+      number += 1;
+    }
+    return key;
+  }
+
+  function insertProjectAfter(sourceKey, targetKey, project) {
+    var next = {};
+    Object.keys(draft.projects).forEach(function (key) {
+      next[key] = draft.projects[key];
+      if (key === sourceKey) next[targetKey] = project;
+    });
+    if (!sourceKey) next[targetKey] = project;
+    draft.projects = next;
+  }
+
+  function duplicateProject(key) {
+    var source = draft.projects[key];
+    if (!source) return;
+    pushHistory();
+    var copy = cloneJson(source);
+    copy.title = (source.title || 'Project') + ' Copy';
+    var targetKey = uniqueProjectKey(copy.title);
+    insertProjectAfter(key, targetKey, copy);
+    copyScopedStyles('projects.' + key + '.', 'projects.' + targetKey + '.');
+    renumberProjects();
+    markUnsaved();
+    rerender();
+    var section = document.querySelector('[data-project-key="' + targetKey + '"]');
+    if (section) section.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    toast('Project duplicated', 'ok');
+  }
+
+  function copyProject(key) {
+    if (!draft.projects[key]) return;
+    setEditorClipboard({ type: 'project', data: cloneJson(draft.projects[key]), styles: scopedStyles('projects.' + key + '.') });
+    toast('Project copied - paste it from Add', 'ok', 3500);
+  }
+
+  function scopedStyles(prefix) {
+    var result = {};
+    Object.keys(draft.styles || {}).forEach(function (path) {
+      if (path.indexOf(prefix) === 0) result[path.slice(prefix.length)] = cloneJson(draft.styles[path]);
+    });
+    return result;
+  }
+
+  function applyClipboardStyles(prefix, styles) {
+    if (!styles || !Object.keys(styles).length) return;
+    draft.styles = draft.styles || {};
+    Object.keys(styles).forEach(function (suffix) { draft.styles[prefix + suffix] = cloneJson(styles[suffix]); });
+  }
+
   // ── Tags ──────────────────────────────────────────────────────────────────
   function adornTags() {
     document.querySelectorAll('[data-role="tags"]').forEach(function (row) {
@@ -772,6 +854,16 @@
       layoutBtn.title = 'Layout options (image side, shape, background)';
       layoutBtn.addEventListener('click', function () { openLayoutPopover(key); });
 
+      var duplicate = make('button', '', '⧉');
+      duplicate.type = 'button';
+      duplicate.title = 'Duplicate this project';
+      duplicate.addEventListener('click', function () { duplicateProject(key); });
+
+      var copy = make('button', '', '□');
+      copy.type = 'button';
+      copy.title = 'Copy this project';
+      copy.addEventListener('click', function () { copyProject(key); });
+
       var del = make('button', 'ed-proj-delete', '✕');
       del.type = 'button';
       del.title = 'Delete this project (removes it from the site)';
@@ -789,6 +881,8 @@
       box.appendChild(up);
       box.appendChild(down);
       box.appendChild(layoutBtn);
+      box.appendChild(duplicate);
+      box.appendChild(copy);
       box.appendChild(del);
       section.appendChild(box);
     });
@@ -901,13 +995,7 @@
     if (!title) { toast('The project needs a name.', 'info'); return; }
 
     pushHistory();
-    var slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '') || 'project';
-    var key = slug;
-    var n = 2;
-    while (Object.prototype.hasOwnProperty.call(draft.projects, key)) {
-      key = slug + n;
-      n += 1;
-    }
+    var key = uniqueProjectKey(title);
 
     draft.projects[key] = {
       number: '00',
@@ -1311,6 +1399,22 @@
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
 
+  function moveSectionTo(sourceId, targetId) {
+    if (!sourceId || sourceId === targetId) return;
+    var registry = currentRegistry();
+    var sourceIndex = registry.findIndex(function (entry) { return entry.id === sourceId; });
+    var targetIndex = registry.findIndex(function (entry) { return entry.id === targetId; });
+    if (sourceIndex < 0 || targetIndex < 0) return;
+    pushHistory();
+    registry = ensureSections();
+    var moved = registry.splice(sourceIndex, 1)[0];
+    targetIndex = registry.findIndex(function (entry) { return entry.id === targetId; });
+    registry.splice(targetIndex, 0, moved);
+    markUnsaved();
+    if (window.renderSections) window.renderSections();
+    enhance();
+  }
+
   function setSectionHidden(id, hidden) {
     pushHistory();
     var reg = ensureSections();
@@ -1345,6 +1449,96 @@
     if (window.renderSections) window.renderSections();
     enhance();
     toast('Section deleted', 'ok');
+  }
+
+  function uniqueSectionId(type) {
+    var id = type + '-' + Math.random().toString(36).slice(2, 7);
+    var registry = ensureSections();
+    while ((draft.sectionData && draft.sectionData[id]) || registry.some(function (entry) { return entry.id === id; })) {
+      id = type + '-' + Math.random().toString(36).slice(2, 7);
+    }
+    return id;
+  }
+
+  function insertCustomSection(data, afterId, styles) {
+    ensureSections();
+    draft.sectionData = draft.sectionData || {};
+    var id = uniqueSectionId(data.type || 'text');
+    draft.sectionData[id] = cloneJson(data);
+    var entry = { id: id, type: data.type || 'text' };
+    var registry = draft.sections[pageKey];
+    var index = afterId ? registry.findIndex(function (item) { return item.id === afterId; }) : -1;
+    if (index >= 0) registry.splice(index + 1, 0, entry);
+    else {
+      var ctaIndex = registry.findIndex(function (item) { return item.builtin && item.id === 'cta'; });
+      if (ctaIndex >= 0) registry.splice(ctaIndex, 0, entry);
+      else registry.push(entry);
+    }
+    applyClipboardStyles('sectionData.' + id + '.', styles);
+    return id;
+  }
+
+  function duplicateSection(id) {
+    var data = draft.sectionData && draft.sectionData[id];
+    if (!data) return;
+    pushHistory();
+    var newId = insertCustomSection(data, id, scopedStyles('sectionData.' + id + '.'));
+    markUnsaved();
+    if (window.renderSections) window.renderSections();
+    enhance();
+    var element = document.querySelector('[data-custom-section="' + newId + '"]');
+    if (element) element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    toast('Section duplicated', 'ok');
+  }
+
+  function copySection(id) {
+    var data = draft.sectionData && draft.sectionData[id];
+    if (!data) return;
+    setEditorClipboard({ type: 'section', data: cloneJson(data), styles: scopedStyles('sectionData.' + id + '.') });
+    toast('Section copied - switch pages and paste it from Add', 'ok', 4200);
+  }
+
+  function savedTemplates() {
+    try { return JSON.parse(localStorage.getItem(TEMPLATE_KEY) || '[]'); }
+    catch (e) { return []; }
+  }
+
+  function saveSectionTemplate(id) {
+    var data = draft.sectionData && draft.sectionData[id];
+    if (!data) return;
+    var name = prompt('Name for this reusable section template:', data.heading || data.label || 'Saved section');
+    if (name === null || !name.trim()) return;
+    var templates = savedTemplates();
+    templates.push({ id: 'template-' + Date.now(), name: name.trim().slice(0, 60), data: cloneJson(data), styles: scopedStyles('sectionData.' + id + '.') });
+    localStorage.setItem(TEMPLATE_KEY, JSON.stringify(templates.slice(-30)));
+    toast('Section template saved', 'ok');
+  }
+
+  function pasteEditorClipboard() {
+    var clipboard = getEditorClipboard();
+    if (!clipboard) return;
+    if (clipboard.type === 'project') {
+      if (!isHomePage) { toast('Projects can only be pasted on the Projects page.', 'info'); return; }
+      pushHistory();
+      var project = cloneJson(clipboard.data);
+      project.title = (project.title || 'Project') + ' Copy';
+      var key = uniqueProjectKey(project.title);
+      insertProjectAfter(null, key, project);
+      applyClipboardStyles('projects.' + key + '.', clipboard.styles);
+      renumberProjects();
+      markUnsaved();
+      rerender();
+      toast('Project pasted', 'ok');
+      return;
+    }
+    if (clipboard.type === 'section') {
+      pushHistory();
+      insertCustomSection(clipboard.data, null, clipboard.styles);
+      markUnsaved();
+      if (window.renderSections) window.renderSections();
+      enhance();
+      toast('Section pasted', 'ok');
+    }
   }
 
   function adornSections() {
@@ -1403,6 +1597,21 @@
           flip.addEventListener('click', function () { flipSectionSide(entry.id); });
           box.appendChild(flip);
         }
+        var duplicate = make('button', '', '⧉');
+        duplicate.type = 'button';
+        duplicate.title = 'Duplicate this section';
+        duplicate.addEventListener('click', function () { duplicateSection(entry.id); });
+        box.appendChild(duplicate);
+        var copy = make('button', '', '□');
+        copy.type = 'button';
+        copy.title = 'Copy this section';
+        copy.addEventListener('click', function () { copySection(entry.id); });
+        box.appendChild(copy);
+        var template = make('button', '', '★');
+        template.type = 'button';
+        template.title = 'Save as reusable template';
+        template.addEventListener('click', function () { saveSectionTemplate(entry.id); });
+        box.appendChild(template);
         var del = make('button', 'ed-proj-delete', '✕');
         del.type = 'button';
         del.title = 'Delete this section';
@@ -1528,6 +1737,21 @@
       card.addEventListener('click', function () { backdrop.remove(); addSection(t[0]); });
       picker.appendChild(card);
     });
+    savedTemplates().forEach(function (template) {
+      var card = make('button', 'ed-section-card ed-section-card-saved');
+      card.type = 'button';
+      card.appendChild(make('span', 'ed-section-card-title', template.name));
+      card.appendChild(make('span', 'ed-section-card-desc', 'Saved template'));
+      card.addEventListener('click', function () {
+        backdrop.remove();
+        pushHistory();
+        insertCustomSection(template.data, null, template.styles);
+        markUnsaved();
+        if (window.renderSections) window.renderSections();
+        enhance();
+      });
+      picker.appendChild(card);
+    });
     modal.appendChild(picker);
     backdrop.appendChild(modal);
     document.body.appendChild(backdrop);
@@ -1537,11 +1761,6 @@
     pushHistory();
     ensureSections();
     draft.sectionData = draft.sectionData || {};
-
-    var id = type + '-' + Math.random().toString(36).slice(2, 6);
-    while (draft.sectionData[id] || draft.sections[pageKey].some(function (e) { return e.id === id; })) {
-      id = type + '-' + Math.random().toString(36).slice(2, 6);
-    }
 
     var data;
     if (type === 'textImage') {
@@ -1553,13 +1772,7 @@
     } else {
       data = { type: 'text', label: 'Section', heading: 'New section', body: ['Write something here.'] };
     }
-    draft.sectionData[id] = data;
-
-    var reg = draft.sections[pageKey];
-    var entry = { id: id, type: type };
-    var ctaIdx = reg.findIndex(function (e) { return e.builtin && e.id === 'cta'; });
-    if (ctaIdx !== -1) reg.splice(ctaIdx, 0, entry);
-    else reg.push(entry);
+    var id = insertCustomSection(data, null, null);
 
     markUnsaved();
     if (window.renderSections) window.renderSections();
@@ -1930,16 +2143,75 @@
 
     if (tabName === 'layers') {
       var layers = make('div', 'ed-layer-list');
+      [['Header', document.querySelector('body > nav')], ['Footer', document.querySelector('body > footer')]]
+        .forEach(function (globalItem) {
+          if (!globalItem[1]) return;
+          var globalRow = make('button', 'ed-layer-row ed-layer-global');
+          globalRow.type = 'button';
+          globalRow.appendChild(make('span', 'ed-layer-index', 'G'));
+          globalRow.appendChild(make('span', 'ed-layer-name', globalItem[0]));
+          globalRow.appendChild(make('span', 'ed-layer-state', 'Global'));
+          globalRow.addEventListener('click', function () {
+            selectSection(globalItem[1]);
+            globalItem[1].scrollIntoView({ behavior: 'smooth', block: 'center' });
+          });
+          layers.appendChild(globalRow);
+        });
       pageSections().forEach(function (el, index) {
-        var row = make('button', 'ed-layer-row' + (selectedSection === el ? ' ed-active' : ''));
-        row.type = 'button';
-        row.appendChild(make('span', 'ed-layer-index', pad2(index + 1)));
-        row.appendChild(make('span', 'ed-layer-name', sectionLabel(el)));
-        if (el.style.display === 'none') row.appendChild(make('span', 'ed-layer-state', 'Hidden'));
-        row.addEventListener('click', function () {
+        var row = make('div', 'ed-layer-row' + (selectedSection === el ? ' ed-active' : ''));
+        var layerId = el.getAttribute('data-section') || el.getAttribute('data-custom-section');
+        row.draggable = !!layerId;
+        if (layerId) {
+          row.addEventListener('dragstart', function (event) {
+            event.dataTransfer.setData('text/plain', layerId);
+            event.dataTransfer.effectAllowed = 'move';
+          });
+          row.addEventListener('dragover', function (event) {
+            event.preventDefault();
+            event.dataTransfer.dropEffect = 'move';
+          });
+          row.addEventListener('drop', function (event) {
+            event.preventDefault();
+            moveSectionTo(event.dataTransfer.getData('text/plain'), layerId);
+          });
+        }
+        var select = make('button', 'ed-layer-select');
+        select.type = 'button';
+        select.appendChild(make('span', 'ed-layer-index', pad2(index + 1)));
+        select.appendChild(make('span', 'ed-layer-name', sectionLabel(el)));
+        if (el.style.display === 'none') select.appendChild(make('span', 'ed-layer-state', 'Hidden'));
+        select.addEventListener('click', function () {
           selectSection(el);
           el.scrollIntoView({ behavior: 'smooth', block: 'center' });
         });
+        row.appendChild(select);
+        if (layerId) {
+          var moveUp = make('button', 'ed-layer-action', '↑');
+          moveUp.type = 'button';
+          moveUp.title = 'Move section up';
+          moveUp.disabled = index === 0;
+          moveUp.addEventListener('click', function () { moveSection(layerId, -1); });
+          var moveDown = make('button', 'ed-layer-action', '↓');
+          moveDown.type = 'button';
+          moveDown.title = 'Move section down';
+          moveDown.disabled = index === pageSections().length - 1;
+          moveDown.addEventListener('click', function () { moveSection(layerId, 1); });
+          row.appendChild(moveUp);
+          row.appendChild(moveDown);
+        }
+        var customId = el.getAttribute('data-custom-section');
+        if (customId) {
+          var duplicate = make('button', 'ed-layer-action', '⧉');
+          duplicate.type = 'button';
+          duplicate.title = 'Duplicate this section';
+          duplicate.addEventListener('click', function () { duplicateSection(customId); });
+          var copy = make('button', 'ed-layer-action', '□');
+          copy.type = 'button';
+          copy.title = 'Copy this section';
+          copy.addEventListener('click', function () { copySection(customId); });
+          row.appendChild(duplicate);
+          row.appendChild(copy);
+        }
         layers.appendChild(row);
       });
       sidebarPanel.appendChild(layers);
@@ -1948,6 +2220,11 @@
 
     if (tabName === 'add') {
       var addList = make('div', 'ed-workspace-stack');
+      var clipboard = getEditorClipboard();
+      if (clipboard) {
+        var canPaste = clipboard.type === 'section' || (clipboard.type === 'project' && isHomePage);
+        if (canPaste) addList.appendChild(workspaceButton('Paste ' + clipboard.type, 'Insert the item copied in this editor session', pasteEditorClipboard, 'ed-workspace-command-primary'));
+      }
       if (isHomePage) {
         addList.appendChild(workspaceButton('Project', 'Add another portfolio project', addProject));
       }

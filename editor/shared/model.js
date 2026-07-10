@@ -59,6 +59,10 @@ function migrateLegacy(content, previousDocument) {
     columns: {},
     blocks: {},
     media: {},
+    reusableSections: {
+      header: { id: 'header', type: 'header', linked: true, sourcePath: 'nav' },
+      footer: { id: 'footer', type: 'footer', linked: true, sourcePath: 'footer' },
+    },
     design: clone(content.theme || {}),
     legacyContent: clone(content),
   };
@@ -152,7 +156,7 @@ function validateDocument(document) {
     return ['Document must be an object'];
   }
   if (document.schemaVersion !== SCHEMA_VERSION) errors.push('Unsupported schemaVersion');
-  for (const key of ['site', 'pages', 'sections', 'columns', 'blocks', 'media', 'design', 'legacyContent']) {
+  for (const key of ['site', 'pages', 'sections', 'columns', 'blocks', 'media', 'reusableSections', 'design', 'legacyContent']) {
     if (!document[key] || typeof document[key] !== 'object' || Array.isArray(document[key])) {
       errors.push(key + ' must be an object');
     }

@@ -34,6 +34,10 @@ and Projects at 1440x1000 desktop and 390x844 mobile viewports.
 The editor baselines were intentionally updated after Milestone 1 introduced the
 workspace sidebar, top toolbar, mobile drawer, Layers selection, and Preview mode.
 
+Milestone 4 browser checks verified project duplicate/copy/paste and custom-section
+duplicate operations as single undoable transactions, returning the real content to its
+original state with no console errors.
+
 At baseline creation:
 
 - No horizontal overflow was detected at the mobile viewport.

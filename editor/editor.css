@@ -146,6 +146,21 @@ body.ed-shell-active > nav { left: 280px !important; top: 56px !important; width
 }
 .ed-page-home, .ed-layer-state { margin-left: auto; color: #888; font-size: 9px; text-transform: uppercase; }
 .ed-layer-row { min-height: 38px; }
+.ed-layer-row { padding: 0; }
+.ed-layer-select {
+  min-width: 0; min-height: 38px; flex: 1; display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px; border: 0; background: transparent; color: inherit; text-align: left;
+  cursor: pointer; font-family: var(--ed-font);
+}
+.ed-layer-action {
+  width: 30px; height: 30px; flex: 0 0 30px; border: 0; background: transparent;
+  color: #777; cursor: pointer; font-family: var(--ed-font);
+}
+.ed-layer-action:hover { background: #ececec; color: #111; }
+.ed-layer-action:disabled { opacity: .25; cursor: default; }
+.ed-layer-row[draggable="true"] { cursor: grab; }
+.ed-layer-row[draggable="true"]:active { cursor: grabbing; }
+.ed-layer-global { background: #f0f0f0; border-style: dashed; }
 .ed-layer-index { color: #999; font-size: 9px; }
 .ed-layer-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; text-transform: capitalize; }
 .ed-workspace-command { align-items: flex-start; flex-direction: column; gap: 3px; }

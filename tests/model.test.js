@@ -29,6 +29,8 @@ test('current content migrates into a valid versioned document', () => {
   assert.ok(Object.keys(document.sections).length >= 7);
   assert.ok(Object.values(document.blocks).some((block) => block.type === 'project'));
   assert.ok(Object.keys(document.media).length >= 1);
+  assert.equal(document.reusableSections.header.linked, true);
+  assert.equal(document.reusableSections.footer.sourcePath, 'footer');
 });
 
 test('legacy content round-trips without data loss', () => {
