@@ -370,6 +370,14 @@
       } else if (res.status === 422 && res.data.error === 'publish-checks') {
         openPublishReport(res.data.report);
         toast('Fix the publish errors shown in the report.', 'error', 6000);
+      } else if (res.status === 409 && res.data.error === 'publish-warnings') {
+        openPublishReport(res.data.report);
+        if (confirm('The site has ' + res.data.report.warnings + ' warning(s). Publish anyway?')) {
+          api('/api/publish', { acknowledgeWarnings: true }).then(function (retry) {
+            if (retry.ok) { toast('Published! Your site is up to date.', 'ok', 5000); refreshStatus(); }
+            else toast('Publish failed: ' + (retry.data.message || retry.data.error), 'error', 7000);
+          });
+        }
       } else if (res.status === 409 && res.data.error === 'no-remote') {
         toast('Publishing isn’t connected yet. Your changes are saved safely on this computer - once the site is connected to GitHub, Publish will put them online.', 'info', 9000);
         refreshStatus();

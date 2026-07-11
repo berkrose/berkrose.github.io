@@ -169,6 +169,16 @@ test('publish checks report missing files and invalid routes', async () => {
   write('content.js', contentSource(validContent()));
 });
 
+test('publishing requires explicit warning acknowledgement', async () => {
+  const response = await fetch(baseUrl + '/api/publish', {
+    method: 'POST', headers: apiHeaders({ 'Content-Type': 'application/json' }), body: '{}',
+  });
+  const body = await response.json();
+  assert.equal(response.status, 409);
+  assert.equal(body.error, 'publish-warnings');
+  assert.ok(body.report.warnings > 0);
+});
+
 test('rejects a hostile browser origin even with the token', async () => {
   const response = await fetch(baseUrl + '/api/status', {
     headers: apiHeaders({ Origin: 'https://hostile.example' }),

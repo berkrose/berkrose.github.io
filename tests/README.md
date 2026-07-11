@@ -57,6 +57,11 @@ their typography and width tokens, and undid both changes back to the original d
 The editor toolbar retained its own dark theme, the page had no horizontal overflow,
 and the browser console remained clear.
 
+Milestone 10 tests verify invalid routes, missing local files, missing alternative text,
+and explicit warning acknowledgement. Browser checks confirmed the real portfolio passes
+with zero errors, displays five actionable warnings, and exposes the site check from the
+main editor toolbar. Runtime SEO metadata, sitemap, and robots output are also generated.
+
 At baseline creation:
 
 - No horizontal overflow was detected at the mobile viewport.

@@ -508,6 +508,7 @@ function createRevision(content, options) {
     content,
     assets: collectAssetManifest(),
   };
+  if (options && options.report) revision.publishReport = options.report;
   fs.mkdirSync(REVISIONS_ROOT, { recursive: true });
   const destination = path.join(REVISIONS_ROOT, id + '.json');
   const tmp = destination + '.tmp';
@@ -755,6 +756,11 @@ function handlePublish(body, res) {
     sendJson(res, 422, { error: 'publish-checks', message: 'Fix publish errors before publishing.', report });
     return;
   }
+  if (report.warnings && !(body && body.acknowledgeWarnings)) {
+    sendJson(res, 409, { error: 'publish-warnings', message: 'Review and acknowledge warnings before publishing.', report });
+    return;
+  }
+  createRevision(loadContentFile(), { kind: 'named', name: 'Publish report', report });
   git(['add', '-A']);
 
   const dirty = git(['status', '--porcelain']).trim().length > 0;

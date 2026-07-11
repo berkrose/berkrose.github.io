@@ -37,6 +37,9 @@ Use **Add external link** to place a secure web or email link in the desktop, mo
 and footer navigation. Custom page files are generated automatically when the editor
 saves; deleting a page safely removes its generated file.
 
+Page Settings also includes search title, description, canonical URL, social image,
+and a control to hide that page from search engines.
+
 (If double-clicking shows a security warning the first time: right-click the file →
 **Open** → **Open**. macOS only asks once.)
 
@@ -156,6 +159,9 @@ The **THEME** button (bottom bar) opens a panel to restyle the whole site:
 
 Changes preview instantly. Nothing is public until you **Publish**.
 
+The Search and sharing section holds the public site URL, site description, site name,
+and default social image. Saving content regenerates `sitemap.xml` and `robots.txt`.
+
 ### Links
 Your **LinkedIn** and **email** links are editable. In edit mode they show a blue
 dashed outline — click one, type the new address, and press **Save**. Every copy of
@@ -191,6 +197,11 @@ The status text in the bar tells you where you stand: *All changes saved*,
 
 **Typical flow:** edit → Save as you go → when it all looks right, press **Publish**.
 The live site updates about a minute later.
+
+Use **Check site** at any time to review missing files, image descriptions, invalid
+routes and links, oversized media, and incomplete search settings. Errors must be fixed
+before Publish. Warnings can be published only after you explicitly acknowledge them.
+Each publish check is saved in the private revision history for later reference.
 
 ---
 
