@@ -140,11 +140,18 @@ bottom bar. The **+ ADD PROJECT** button appears only on the Projects page.
 
 ### Design & theme
 The **THEME** button (bottom bar) opens a panel to restyle the whole site:
+- **Design presets** — Original, Studio, Editorial, and Technical apply a coordinated
+  starting point without changing any content.
 - **Accent color** — pick one of the preset dots or use the rainbow swatch for any
   custom color. It recolors links, labels, and buttons everywhere.
 - **Background** — Paper, Warm, Cool, or Cream page tints.
 - **Fonts** — five curated pairings (Modern, Grotesk, Editorial, Bold, Classic); each
   card previews in its own font.
+- **Type scale and density** — control the overall text rhythm and spacing.
+- **Content width and corners** — choose how focused or expansive layouts feel and
+  how sharply interface elements are framed.
+- **Images and buttons** — set one consistent image treatment and button style across
+  the whole site.
 - **Reset to original design** — puts everything back to the default look.
 
 Changes preview instantly. Nothing is public until you **Publish**.

@@ -2111,6 +2111,20 @@
     markUnsaved();
   }
 
+  function applyDesignPreset(key) {
+    var presets = {
+      original: null,
+      studio: { accent: '#111111', background: 'paper', fonts: 'grotesk', typeScale: 'balanced', density: 'tight', contentWidth: 'fluid', corners: 'square', images: 'natural', buttons: 'outline' },
+      editorial: { accent: '#bb0018', background: 'warm', fonts: 'editorial', typeScale: 'expressive', density: 'airy', contentWidth: 'focused', corners: 'subtle', images: 'editorial', buttons: 'minimal' },
+      technical: { accent: '#1d4ed8', background: 'cool', fonts: 'archivo', typeScale: 'compact', density: 'tight', contentWidth: 'standard', corners: 'square', images: 'mono', buttons: 'solid' }
+    };
+    pushHistory();
+    if (presets[key]) draft.theme = cloneJson(presets[key]);
+    else delete draft.theme;
+    if (window.applyTheme) window.applyTheme(draft.theme || null);
+    markUnsaved();
+  }
+
   function openThemeModal() {
     if (editing) commitEdit();
     var old = document.getElementById('ed-theme-modal');
@@ -2135,6 +2149,14 @@
 
     var reopen = function () { backdrop.remove(); openThemeModal(); };
     var body = make('div', 'ed-theme-body');
+
+    body.appendChild(make('div', 'ed-theme-label', 'Design preset'));
+    var presetRow = make('div', 'ed-theme-choice-row');
+    [['original','Original'],['studio','Studio'],['editorial','Editorial'],['technical','Technical']].forEach(function (preset) {
+      var button = make('button', 'ed-theme-choice', preset[1]); button.type = 'button';
+      button.addEventListener('click', function () { applyDesignPreset(preset[0]); reopen(); }); presetRow.appendChild(button);
+    });
+    body.appendChild(presetRow);
 
     // Accent
     body.appendChild(make('div', 'ed-theme-label', 'Accent color'));
@@ -2197,6 +2219,25 @@
       fontList.appendChild(card);
     });
     body.appendChild(fontList);
+
+    function choiceGroup(label, field, fallback, choices) {
+      body.appendChild(make('div', 'ed-theme-label', label));
+      var row = make('div', 'ed-theme-choice-row');
+      choices.forEach(function (choice) {
+        var button = make('button', 'ed-theme-choice' + ((theme[field] || fallback) === choice[0] ? ' ed-active' : ''), choice[1]);
+        button.type = 'button';
+        button.addEventListener('click', function () { setThemeField(field, choice[0]); reopen(); });
+        row.appendChild(button);
+      });
+      body.appendChild(row);
+    }
+
+    choiceGroup('Type scale', 'typeScale', 'balanced', [['compact','Compact'],['balanced','Balanced'],['expressive','Expressive']]);
+    choiceGroup('Spacing density', 'density', 'standard', [['tight','Tight'],['standard','Standard'],['airy','Airy']]);
+    choiceGroup('Content width', 'contentWidth', 'standard', [['focused','Focused'],['standard','Standard'],['fluid','Fluid']]);
+    choiceGroup('Corners', 'corners', 'square', [['square','Square'],['subtle','Subtle'],['soft','Soft']]);
+    choiceGroup('Images', 'images', 'editorial', [['editorial','Editorial'],['natural','Natural'],['mono','Mono']]);
+    choiceGroup('Buttons', 'buttons', 'solid', [['solid','Solid'],['outline','Outline'],['minimal','Minimal']]);
     modal.appendChild(body);
 
     var foot = make('div', 'ed-modal-foot');

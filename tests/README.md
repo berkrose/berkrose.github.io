@@ -52,6 +52,11 @@ metadata, image signatures, replacement boundaries, and refusal to delete used f
 Browser checks loaded 33 current assets, filtered to the profile image, and confirmed
 that used media exposes no delete action.
 
+Milestone 9 browser checks applied the Studio and Editorial design presets, verified
+their typography and width tokens, and undid both changes back to the original design.
+The editor toolbar retained its own dark theme, the page had no horizontal overflow,
+and the browser console remained clear.
+
 At baseline creation:
 
 - No horizontal overflow was detected at the mobile viewport.

@@ -28,6 +28,30 @@
   // Apply defaults synchronously (before first paint) so the vars always resolve.
   Object.keys(DEFAULTS).forEach(function (k) { setVar(k, DEFAULTS[k]); });
 
+  var systemStyle = document.createElement('style');
+  systemStyle.id = 'theme-system-style';
+  systemStyle.textContent =
+    'html.theme-type-compact{font-size:14.5px}html.theme-type-balanced{font-size:16px}html.theme-type-expressive{font-size:17.5px}' +
+    'html.theme-width-focused main{max-width:1200px!important;margin-left:auto!important;margin-right:auto!important}' +
+    'html.theme-width-standard main{max-width:1920px!important;margin-left:auto!important;margin-right:auto!important}' +
+    'html.theme-width-fluid main{max-width:none!important}' +
+    'html.theme-density-tight main>section,html.theme-density-tight #projects-container>section{padding-top:40px!important;padding-bottom:40px!important}' +
+    'html.theme-density-airy main>section,html.theme-density-airy #projects-container>section{padding-top:112px!important;padding-bottom:112px!important}' +
+    'html.theme-corners-subtle main img,html.theme-corners-subtle main button,html.theme-corners-subtle main a.bg-primary{border-radius:4px!important}' +
+    'html.theme-corners-soft main img,html.theme-corners-soft main button,html.theme-corners-soft main a.bg-primary{border-radius:10px!important}' +
+    'html.theme-images-natural .project-img,html.theme-images-natural main img{filter:none!important}' +
+    'html.theme-images-mono main img{filter:grayscale(1) contrast(1.08)!important}' +
+    'html.theme-buttons-outline main a.bg-primary{background:transparent!important;color:#111!important;border:1px solid #111!important}' +
+    'html.theme-buttons-minimal main a.bg-primary{background:transparent!important;color:var(--c-accent)!important;border-bottom:1px solid currentColor!important;padding-left:0!important;padding-right:0!important}';
+  document.head.appendChild(systemStyle);
+
+  function setChoiceClass(prefix, value, fallback) {
+    Array.prototype.slice.call(root.classList).forEach(function (name) {
+      if (name.indexOf(prefix) === 0) root.classList.remove(name);
+    });
+    root.classList.add(prefix + (value || fallback));
+  }
+
   // ── Presets shared with the editor (window.THEME_PRESETS) ───────────────────
   var BACKGROUNDS = {
     paper: { surface: '#f9f9f9', low: '#f3f3f4' },
@@ -109,6 +133,13 @@
     setVar('--f-body', fam(f.body));
     setVar('--f-label', fam(f.label));
     setFontLink(f.css);
+
+    setChoiceClass('theme-type-', theme.typeScale, 'balanced');
+    setChoiceClass('theme-density-', theme.density, 'standard');
+    setChoiceClass('theme-width-', theme.contentWidth, 'standard');
+    setChoiceClass('theme-corners-', theme.corners, 'square');
+    setChoiceClass('theme-images-', theme.images, 'editorial');
+    setChoiceClass('theme-buttons-', theme.buttons, 'solid');
   }
 
   window.applyTheme = applyTheme;

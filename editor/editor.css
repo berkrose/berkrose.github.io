@@ -482,6 +482,13 @@ body.ed-preview-mode .ed-selected-section { outline: none !important; }
   text-transform: uppercase; letter-spacing: 0.08em; color: #444;
 }
 .ed-font-list { display: flex; flex-direction: column; gap: 8px; }
+.ed-theme-choice-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.ed-theme-choice {
+  flex: 1; min-width: 90px; padding: 9px 8px; border: 1px solid #ddd; background: #fafafa;
+  color: #555; cursor: pointer; font: 600 10px/1.2 var(--ed-font); text-transform: uppercase;
+}
+.ed-theme-choice:hover { border-color: #999; color: #111; }
+.ed-theme-choice.ed-active { border-color: var(--ed-red); color: var(--ed-red); box-shadow: inset 0 -2px 0 var(--ed-red); }
 .ed-font-card {
   display: flex; align-items: center; gap: 14px; text-align: left;
   padding: 10px 14px; border: 1px solid #ddd; cursor: pointer; border-radius: 4px;

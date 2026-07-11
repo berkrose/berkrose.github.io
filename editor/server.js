@@ -31,6 +31,7 @@ const REVISIONS_ROOT = path.join(EDITOR_DATA_ROOT, 'revisions');
 const DOCUMENT_FILE = path.join(EDITOR_DATA_ROOT, 'site.json');
 const GENERATED_PAGES_FILE = path.join(EDITOR_DATA_ROOT, 'generated-pages.json');
 const MEDIA_METADATA_FILE = path.join(EDITOR_DATA_ROOT, 'media.json');
+const HOME_STATE_FILE = path.join(EDITOR_DATA_ROOT, 'home-page.txt');
 const SESSION_TOKEN = crypto.randomBytes(32).toString('hex');
 
 const MAX_BODY_BYTES = 25 * 1024 * 1024; // 25MB request body cap
@@ -284,15 +285,18 @@ function generatedPages(content) {
   }
   const homeId = content.siteSettings && content.siteSettings.homePageId || 'about';
   const aboutFile = path.join(SITE_ROOT, 'about.html');
+  let previousHome = '';
+  try { previousHome = fs.readFileSync(HOME_STATE_FILE, 'utf8').trim(); } catch (error) {}
   if (homeId !== 'about') {
     fs.writeFileSync(aboutFile, fs.readFileSync(path.join(SITE_ROOT, 'index.html'), 'utf8'), 'utf8');
-  } else {
+  } else if (previousHome && previousHome !== 'about') {
     fs.writeFileSync(aboutFile,
       '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>Berkeley Skuratowicz</title>' +
       '<meta http-equiv="refresh" content="0; url=index.html"><link rel="canonical" href="https://berkrose.github.io/">' +
       '<script>window.location.replace("index.html")</script></head><body><p>This page has moved. <a href="index.html">Continue to the site</a>.</p></body></html>\n',
       'utf8');
   }
+  fs.writeFileSync(HOME_STATE_FILE, homeId, 'utf8');
   fs.writeFileSync(GENERATED_PAGES_FILE, JSON.stringify(written, null, 2), 'utf8');
 }
 
