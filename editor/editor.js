@@ -367,6 +367,9 @@
             : '';
           toast('Published! Your site is up to date' + (when ? ' (' + when + ')' : '') + '.', 'ok', 5000);
         });
+      } else if (res.status === 422 && res.data.error === 'publish-checks') {
+        openPublishReport(res.data.report);
+        toast('Fix the publish errors shown in the report.', 'error', 6000);
       } else if (res.status === 409 && res.data.error === 'no-remote') {
         toast('Publishing isn’t connected yet. Your changes are saved safely on this computer - once the site is connected to GitHub, Publish will put them online.', 'info', 9000);
         refreshStatus();
@@ -380,6 +383,42 @@
     }).catch(function (e) {
       toast('Publish failed: ' + e.message, 'error', 6000);
     });
+  }
+
+  function openPublishReport(report) {
+    var backdrop = make('div', 'ed-backdrop');
+    var modal = make('div', 'ed-modal');
+    var head = make('div', 'ed-modal-head');
+    head.appendChild(make('h3', '', report.passed ? 'Site ready to publish' : 'Publish checks'));
+    var close = make('button', 'ed-modal-close', '×'); close.type = 'button'; close.addEventListener('click', function () { backdrop.remove(); }); head.appendChild(close); modal.appendChild(head);
+    var body = make('div', 'ed-publish-report');
+    body.appendChild(make('p', 'ed-publish-summary', report.errors + ' errors · ' + report.warnings + ' warnings'));
+    if (!report.issues.length) body.appendChild(make('p', 'ed-workspace-empty', 'No issues found.'));
+    report.issues.forEach(function (item) {
+      var row = make('div', 'ed-publish-issue ed-publish-' + item.severity);
+      row.appendChild(make('strong', '', item.severity === 'error' ? 'Error' : 'Warning'));
+      row.appendChild(make('span', '', item.message));
+      if (item.target) {
+        var go = make('button', 'ed-btn ed-btn-ghost', 'Open'); go.type = 'button';
+        go.addEventListener('click', function () { backdrop.remove(); openIssueTarget(item.target); }); row.appendChild(go);
+      }
+      body.appendChild(row);
+    });
+    modal.appendChild(body); backdrop.appendChild(modal); document.body.appendChild(backdrop);
+  }
+
+  function openIssueTarget(target) {
+    if (target === 'design:seo') { openThemeModal(); return; }
+    if (target.indexOf('pages:') === 0) { openPageSettings(target.slice(6)); return; }
+    if (target.indexOf('media:') === 0) { activeWorkspaceTab = 'media'; renderWorkspacePanel('media'); return; }
+    toast('Use the highlighted content controls to fix this item.', 'info', 4000);
+  }
+
+  function runPublishChecks() {
+    fetch('/api/publish-checks', { headers: { 'X-Portfolio-Editor-Token': sessionToken } })
+      .then(function (response) { return response.json(); })
+      .then(function (data) { openPublishReport(data.report); })
+      .catch(function () { toast('Could not run site checks.', 'error'); });
   }
 
   function discard() {
@@ -2238,6 +2277,18 @@
     choiceGroup('Corners', 'corners', 'square', [['square','Square'],['subtle','Subtle'],['soft','Soft']]);
     choiceGroup('Images', 'images', 'editorial', [['editorial','Editorial'],['natural','Natural'],['mono','Mono']]);
     choiceGroup('Buttons', 'buttons', 'solid', [['solid','Solid'],['outline','Outline'],['minimal','Minimal']]);
+
+    body.appendChild(make('div', 'ed-theme-label', 'Search and sharing'));
+    var seo = draft.siteSeo || {};
+    var seoFields = {};
+    [['siteName','Site name'],['siteUrl','Public site URL'],['description','Site description'],['socialImage','Default social image']].forEach(function (entry) {
+      var label = make('label', 'ed-setting-field'); label.appendChild(make('span', '', entry[1]));
+      var input = entry[0] === 'description' ? document.createElement('textarea') : document.createElement('input');
+      input.value = seo[entry[0]] || ''; input.setAttribute('data-editor', ''); label.appendChild(input); body.appendChild(label); seoFields[entry[0]] = input;
+    });
+    var saveSeo = make('button', 'ed-btn ed-btn-save', 'Save search settings'); saveSeo.type = 'button';
+    saveSeo.addEventListener('click', function () { pushHistory(); draft.siteSeo = draft.siteSeo || {}; Object.keys(seoFields).forEach(function (key) { draft.siteSeo[key] = seoFields[key].value.trim(); }); markUnsaved(); toast('Search settings updated', 'ok'); });
+    body.appendChild(saveSeo);
     modal.appendChild(body);
 
     var foot = make('div', 'ed-modal-foot');
@@ -2500,6 +2551,13 @@
     var slugLabel = make('label', 'ed-setting-field'); slugLabel.appendChild(make('span', '', 'Page URL'));
     var slugInput = document.createElement('input'); slugInput.type = 'text'; slugInput.value = page.slug; slugInput.disabled = !!page.builtin; slugInput.setAttribute('data-editor', ''); slugLabel.appendChild(slugInput); form.appendChild(slugLabel);
     var hiddenLabel = make('label', 'ed-check-label'); var hidden = document.createElement('input'); hidden.type = 'checkbox'; hidden.checked = page.status === 'hidden'; hidden.setAttribute('data-editor', ''); hiddenLabel.appendChild(hidden); hiddenLabel.appendChild(make('span', '', 'Hide from navigation')); form.appendChild(hiddenLabel);
+    var pageSeo = page.seo || {};
+    var seoInputs = {};
+    [['title','Search title'],['description','Search description'],['canonical','Canonical URL'],['socialImage','Social image']].forEach(function (entry) {
+      var label = make('label', 'ed-setting-field'); label.appendChild(make('span', '', entry[1]));
+      var input = entry[0] === 'description' ? document.createElement('textarea') : document.createElement('input'); input.type = 'text'; input.value = pageSeo[entry[0]] || ''; input.setAttribute('data-editor', ''); label.appendChild(input); form.appendChild(label); seoInputs[entry[0]] = input;
+    });
+    var noIndexLabel = make('label', 'ed-check-label'); var noIndex = document.createElement('input'); noIndex.type = 'checkbox'; noIndex.checked = !!pageSeo.noIndex; noIndex.setAttribute('data-editor', ''); noIndexLabel.appendChild(noIndex); noIndexLabel.appendChild(make('span', '', 'Hide from search engines')); form.appendChild(noIndexLabel);
     var homeLabel = make('label', 'ed-check-label'); var home = document.createElement('input'); home.type = 'checkbox'; home.checked = (draft.siteSettings && draft.siteSettings.homePageId || 'about') === id; home.setAttribute('data-editor', ''); homeLabel.appendChild(home); homeLabel.appendChild(make('span', '', 'Use as home page')); form.appendChild(homeLabel);
     modal.appendChild(form);
     var foot = make('div', 'ed-modal-foot');
@@ -2513,6 +2571,7 @@
       pushHistory(); draft.sitePages = draft.sitePages || {};
       var target = draft.sitePages[id] || cloneJson(page);
       target.title = titleInput.value.trim(); target.status = hidden.checked ? 'hidden' : 'published';
+      target.seo = target.seo || {}; Object.keys(seoInputs).forEach(function (key) { target.seo[key] = seoInputs[key].value.trim(); }); target.seo.noIndex = noIndex.checked;
       if (!page.builtin) target.slug = uniquePageSlug(slugInput.value.replace(/\.html$/, ''), id);
       draft.sitePages[id] = target;
       draft.siteSettings = draft.siteSettings || {}; if (home.checked) draft.siteSettings.homePageId = id;
@@ -2930,7 +2989,13 @@
     publishBtn.id = 'ed-publish';
     publishBtn.addEventListener('click', publish);
 
+    var checkBtn = make('button', 'ed-btn ed-btn-ghost', 'Check site');
+    checkBtn.type = 'button';
+    checkBtn.id = 'ed-publish-checks';
+    checkBtn.addEventListener('click', runPublishChecks);
+
     actions.appendChild(saveBtn);
+    actions.appendChild(checkBtn);
     actions.appendChild(discardBtn);
     actions.appendChild(publishBtn);
     bar.appendChild(actions);

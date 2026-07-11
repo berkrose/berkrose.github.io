@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://berkrose.github.io/sitemap.xml

@@ -573,6 +573,19 @@ body.ed-preview-mode .ed-selected-section { outline: none !important; }
   border-top: 1px solid #eee;
 }
 .ed-modal-hint { color: #8a8a8a; font-size: 11px; }
+.ed-publish-report { padding: 20px; overflow-y: auto; }
+.ed-publish-summary { margin: 0 0 14px; color: #555; font-size: 12px; }
+.ed-publish-issue {
+  display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; align-items: center;
+  gap: 12px; padding: 12px 0; border-top: 1px solid #e7e7e7; font-size: 12px;
+}
+.ed-publish-issue strong { text-transform: uppercase; font-size: 10px; letter-spacing: 0.08em; }
+.ed-publish-error strong { color: var(--ed-red); }
+.ed-publish-warning strong { color: #8a5a00; }
+@media (max-width: 560px) {
+  .ed-publish-issue { grid-template-columns: 1fr auto; }
+  .ed-publish-issue strong { grid-column: 1 / -1; }
+}
 
 /* ── Toasts ──────────────────────────────────────────────────────────────── */
 .ed-toasts {

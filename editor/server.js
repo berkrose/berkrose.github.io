@@ -14,6 +14,7 @@ const path = require('path');
 const crypto = require('crypto');
 const { execFileSync, execFile } = require('child_process');
 const { migrateLegacy, validateDocument } = require('./shared/model');
+const { runPublishChecks } = require('./shared/publish-checks');
 
 const HOST = '127.0.0.1';
 const PORT = parseInt(process.env.PORT, 10) || 4444;
@@ -32,6 +33,7 @@ const DOCUMENT_FILE = path.join(EDITOR_DATA_ROOT, 'site.json');
 const GENERATED_PAGES_FILE = path.join(EDITOR_DATA_ROOT, 'generated-pages.json');
 const MEDIA_METADATA_FILE = path.join(EDITOR_DATA_ROOT, 'media.json');
 const HOME_STATE_FILE = path.join(EDITOR_DATA_ROOT, 'home-page.txt');
+const PUBLISH_REPORT_FILE = path.join(EDITOR_DATA_ROOT, 'publish-report.json');
 const SESSION_TOKEN = crypto.randomBytes(32).toString('hex');
 
 const MAX_BODY_BYTES = 25 * 1024 * 1024; // 25MB request body cap
@@ -48,6 +50,8 @@ const MIME_TYPES = {
   '.ico': 'image/x-icon',
   '.pdf': 'application/pdf',
   '.woff2': 'font/woff2',
+  '.xml': 'application/xml; charset=utf-8',
+  '.txt': 'text/plain; charset=utf-8',
 };
 
 const NO_CACHE_EXTS = new Set(['.html', '.js', '.css']);
@@ -59,6 +63,7 @@ const EDITOR_INJECTION =
 const PUBLIC_ROOT_FILES = new Set([
   'index.html', 'projects.html', 'about.html', 'content.js', 'content-loader.js',
   'render-projects.js', 'sections.js', 'theme-config.js', 'nav.js', 'lightbox.js',
+  'seo.js', 'sitemap.xml', 'robots.txt',
 ]);
 const PUBLIC_EDITOR_FILES = new Set(['editor/editor.css', 'editor/editor.js']);
 
@@ -251,7 +256,7 @@ function pageHtml(page) {
     '<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet">\n' +
     '<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>\n' +
     '<script src="content.js"></script><script src="content-loader.js"></script><script src="sections.js"></script>\n' +
-    '<script src="nav.js"></script><script src="lightbox.js"></script><script src="theme-config.js"></script>\n' +
+    '<script src="nav.js"></script><script src="lightbox.js"></script><script src="seo.js"></script><script src="theme-config.js"></script>\n' +
     '<style>body{background:var(--c-surface);color:#1a1c1c;font-family:var(--f-body),sans-serif}</style>\n' +
     '</head><body class="bg-surface text-on-surface antialiased">\n' +
     '<nav class="fixed top-0 w-full z-50 bg-white/80 backdrop-blur-md"><div class="flex justify-between items-center w-full px-8 py-6 max-w-[1920px] mx-auto">' +
@@ -298,6 +303,29 @@ function generatedPages(content) {
   }
   fs.writeFileSync(HOME_STATE_FILE, homeId, 'utf8');
   fs.writeFileSync(GENERATED_PAGES_FILE, JSON.stringify(written, null, 2), 'utf8');
+  generateSeoFiles(content);
+}
+
+function normalizedSiteUrl(content) {
+  const raw = content.siteSeo && content.siteSeo.siteUrl || 'https://berkrose.github.io';
+  try { return new URL(raw).toString().replace(/\/$/, ''); } catch (error) { return ''; }
+}
+
+function generateSeoFiles(content) {
+  const siteUrl = normalizedSiteUrl(content);
+  if (!siteUrl) return;
+  const pages = [
+    { id: 'about', slug: 'index.html', status: 'published' },
+    { id: 'projects', slug: 'projects.html', status: 'published' },
+  ];
+  Object.values(content.sitePages || {}).forEach((page) => pages.push(page));
+  const homeId = content.siteSettings && content.siteSettings.homePageId || 'about';
+  const urls = pages.filter((page) => page && page.status !== 'hidden' && !(page.seo && page.seo.noIndex)).map((page) => {
+    const relative = page.id === homeId ? '' : (page.id === 'about' ? 'about.html' : page.slug);
+    return '  <url><loc>' + siteUrl + '/' + relative + '</loc></url>';
+  });
+  fs.writeFileSync(path.join(SITE_ROOT, 'sitemap.xml'), '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' + urls.join('\n') + '\n</urlset>\n', 'utf8');
+  fs.writeFileSync(path.join(SITE_ROOT, 'robots.txt'), 'User-agent: *\nAllow: /\nSitemap: ' + siteUrl + '/sitemap.xml\n', 'utf8');
 }
 
 function collectAssetManifest() {
@@ -720,6 +748,13 @@ function handleDeleteImage(body, res) {
 }
 
 function handlePublish(body, res) {
+  const report = runPublishChecks(loadContentFile(), SITE_ROOT);
+  fs.mkdirSync(EDITOR_DATA_ROOT, { recursive: true });
+  fs.writeFileSync(PUBLISH_REPORT_FILE, JSON.stringify(report, null, 2), 'utf8');
+  if (!report.passed) {
+    sendJson(res, 422, { error: 'publish-checks', message: 'Fix publish errors before publishing.', report });
+    return;
+  }
   git(['add', '-A']);
 
   const dirty = git(['status', '--porcelain']).trim().length > 0;
@@ -898,6 +933,10 @@ const server = http.createServer(async (req, res) => {
       }
       if (pathname === '/api/media' && req.method === 'GET') {
         handleMediaList(res);
+        return;
+      }
+      if (pathname === '/api/publish-checks' && req.method === 'GET') {
+        sendJson(res, 200, { report: runPublishChecks(loadContentFile(), SITE_ROOT) });
         return;
       }
       if (req.method === 'POST') {

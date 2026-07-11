@@ -91,6 +91,7 @@ before(async () => {
   write('theme-config.js', '');
   write('nav.js', '');
   write('lightbox.js', '');
+  write('seo.js', '');
   write('editor/editor.js', '');
   write('editor/editor.css', '');
   write('editor/server.js', 'private');
@@ -149,6 +150,23 @@ test('accepts an authorized status request', async () => {
   assert.equal(response.status, 200);
   assert.equal(body.branch, 'main');
   assert.equal(body.dirty, false);
+});
+
+test('publish checks report missing files and invalid routes', async () => {
+  const broken = validContent('Broken');
+  broken.projects.sample = { title: 'Sample', images: ['assets/images/missing.jpg'], imageAlt: '' };
+  broken.sitePages = { bad: { id: 'bad', title: 'Bad', slug: '../bad.html' } };
+  const saveResponse = await fetch(baseUrl + '/api/content', {
+    method: 'POST', headers: apiHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify(broken),
+  });
+  assert.equal(saveResponse.status, 200);
+  const response = await fetch(baseUrl + '/api/publish-checks', { headers: apiHeaders() });
+  const body = await response.json();
+  assert.equal(body.report.passed, false);
+  assert.ok(body.report.issues.some((item) => item.code === 'invalid-route'));
+  assert.ok(body.report.issues.some((item) => item.code === 'missing-file'));
+  assert.ok(body.report.issues.some((item) => item.code === 'missing-alt'));
+  write('content.js', contentSource(validContent()));
 });
 
 test('rejects a hostile browser origin even with the token', async () => {

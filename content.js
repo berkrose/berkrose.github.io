@@ -223,6 +223,7 @@ const CONTENT = {
     "label": "Biography",
     "heading": "Engineering and Product Design",
     "profilePhoto": "assets/images/profile.jpeg",
+    "profileAlt": "Berkeley Skuratowicz at Fushimi Inari shrine in Japan",
     "bio": [
       "I'm a recent Product Design graduate student from San Francisco State University with double degrees in Mechanical and Manufacturing Engineering from Oregon State University, where I graduated summa cum laude.",
       "My background includes engineering internships at Oregon Freeze Dry, Blue Marble, and Bioskin, where I modeled complex liquid piping systems, designed motor housings for consumer goods, and performed failure analysis on prototypes to ensure mechanical reliability.",
@@ -269,8 +270,19 @@ const CONTENT = {
       "attribution": "- Joe Sparano"
     }
   },
+  "siteSeo": {
+    "siteName": "Berkeley Skuratowicz",
+    "siteUrl": "https://berkrose.github.io",
+    "description": "Engineering and product design portfolio of Berkeley Skuratowicz, featuring industrial design, prototyping, manufacturing, and community-centered work.",
+    "socialImage": "assets/images/profile.jpeg"
+  },
   "links": {
     "linkedin": "https://www.linkedin.com/in/berkeley-skuratowicz",
     "email": "berkrose@gmail.com"
+  },
+  "styles": {
+    "hero.heading": {
+      "fontScale": 0.9
+    }
   }
 };
