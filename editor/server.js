@@ -30,6 +30,7 @@ const EDITOR_DATA_ROOT = path.join(SITE_ROOT, '.editor-data');
 const REVISIONS_ROOT = path.join(EDITOR_DATA_ROOT, 'revisions');
 const DOCUMENT_FILE = path.join(EDITOR_DATA_ROOT, 'site.json');
 const GENERATED_PAGES_FILE = path.join(EDITOR_DATA_ROOT, 'generated-pages.json');
+const MEDIA_METADATA_FILE = path.join(EDITOR_DATA_ROOT, 'media.json');
 const SESSION_TOKEN = crypto.randomBytes(32).toString('hex');
 
 const MAX_BODY_BYTES = 25 * 1024 * 1024; // 25MB request body cap
@@ -226,6 +227,10 @@ function readStructuredDocument() {
 
 function writeStructuredDocument(content) {
   const document = migrateLegacy(content, readStructuredDocument());
+  const mediaMetadata = readMediaMetadata();
+  Object.values(document.media).forEach((item) => {
+    if (mediaMetadata[item.source]) Object.assign(item, mediaMetadata[item.source]);
+  });
   const errors = validateDocument(document);
   if (errors.length) throw new Error('Structured document validation failed: ' + errors.join('; '));
   fs.mkdirSync(EDITOR_DATA_ROOT, { recursive: true });
@@ -315,6 +320,117 @@ function collectAssetManifest() {
     assets.push({ path: 'assets/resume.pdf', bytes: stat.size, modified: stat.mtime.toISOString() });
   }
   return assets.sort((a, b) => a.path.localeCompare(b.path));
+}
+
+function readMediaMetadata() {
+  try { return JSON.parse(fs.readFileSync(MEDIA_METADATA_FILE, 'utf8')); }
+  catch (error) { return {}; }
+}
+
+function writeMediaMetadata(metadata) {
+  fs.mkdirSync(EDITOR_DATA_ROOT, { recursive: true });
+  const tmp = MEDIA_METADATA_FILE + '.tmp';
+  fs.writeFileSync(tmp, JSON.stringify(metadata, null, 2), 'utf8');
+  fs.renameSync(tmp, MEDIA_METADATA_FILE);
+}
+
+function countReferences(value, target) {
+  if (value === target) return 1;
+  if (Array.isArray(value)) return value.reduce((sum, item) => sum + countReferences(item, target), 0);
+  if (value && typeof value === 'object') {
+    return Object.values(value).reduce((sum, item) => sum + countReferences(item, target), 0);
+  }
+  return 0;
+}
+
+function mediaInventory() {
+  const content = loadContentFile();
+  const metadata = readMediaMetadata();
+  return collectAssetManifest().map((asset) => {
+    const absolute = path.join(SITE_ROOT, asset.path);
+    const extension = path.extname(asset.path).toLowerCase();
+    const hash = crypto.createHash('sha256').update(fs.readFileSync(absolute)).digest('hex');
+    return Object.assign({}, asset, metadata[asset.path] || {}, {
+      type: extension === '.pdf' ? 'document' : 'image',
+      extension,
+      hash,
+      usageCount: countReferences(content, asset.path),
+    });
+  });
+}
+
+function validMediaPath(relative) {
+  return typeof relative === 'string' &&
+    (/^assets\/images\/[a-zA-Z0-9._/-]+\.(png|jpe?g|webp)$/.test(relative) || relative === 'assets/resume.pdf') &&
+    !relative.split('/').some((part) => !part || part === '..' || part.startsWith('.'));
+}
+
+function detectedImageType(bytes) {
+  if (bytes.length >= 8 && bytes.slice(0, 8).equals(Buffer.from([137,80,78,71,13,10,26,10]))) return '.png';
+  if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return '.jpg';
+  if (bytes.length >= 12 && bytes.slice(0, 4).toString('ascii') === 'RIFF' && bytes.slice(8, 12).toString('ascii') === 'WEBP') return '.webp';
+  return '';
+}
+
+function imageTypeMatches(extension, detected) {
+  return detected && (extension === detected || ((extension === '.jpeg' || extension === '.jpg') && detected === '.jpg'));
+}
+
+function handleMediaList(res) {
+  const media = mediaInventory();
+  const hashCounts = {};
+  media.forEach((item) => { hashCounts[item.hash] = (hashCounts[item.hash] || 0) + 1; });
+  media.forEach((item) => { item.duplicate = hashCounts[item.hash] > 1; });
+  sendJson(res, 200, { media });
+}
+
+function handleMediaMetadata(body, res) {
+  if (!body || !validMediaPath(body.path)) { sendJson(res, 400, { error: 'Invalid media path' }); return; }
+  const metadata = readMediaMetadata();
+  metadata[body.path] = {
+    label: typeof body.label === 'string' ? body.label.trim().slice(0, 100) : '',
+    alt: typeof body.alt === 'string' ? body.alt.trim().slice(0, 300) : '',
+    caption: typeof body.caption === 'string' ? body.caption.trim().slice(0, 500) : '',
+    credit: typeof body.credit === 'string' ? body.credit.trim().slice(0, 200) : '',
+    focalX: Math.max(0, Math.min(100, Number(body.focalX) || 50)),
+    focalY: Math.max(0, Math.min(100, Number(body.focalY) || 50)),
+    archived: !!body.archived,
+  };
+  writeMediaMetadata(metadata);
+  sendJson(res, 200, { ok: true, metadata: metadata[body.path] });
+}
+
+function handleMediaDelete(body, res) {
+  const relative = body && body.path;
+  if (!validMediaPath(relative) || relative === 'assets/resume.pdf') {
+    sendJson(res, 400, { error: 'Only unused images can be deleted here' }); return;
+  }
+  const item = mediaInventory().find((entry) => entry.path === relative);
+  if (!item) { sendJson(res, 404, { error: 'Media not found' }); return; }
+  if (item.usageCount > 0) { sendJson(res, 409, { error: 'Media is still used ' + item.usageCount + ' time(s)' }); return; }
+  const absolute = path.resolve(SITE_ROOT, relative);
+  if (!absolute.startsWith(IMAGES_ROOT + path.sep)) { sendJson(res, 403, { error: 'Forbidden path' }); return; }
+  fs.unlinkSync(absolute);
+  const metadata = readMediaMetadata(); delete metadata[relative]; writeMediaMetadata(metadata);
+  sendJson(res, 200, { ok: true });
+}
+
+function handleMediaReplace(body, res) {
+  const relative = body && body.path;
+  if (!validMediaPath(relative) || relative === 'assets/resume.pdf' || typeof body.data !== 'string') {
+    sendJson(res, 400, { error: 'Invalid replacement request' }); return;
+  }
+  const extension = path.extname(relative).toLowerCase();
+  const bytes = Buffer.from(body.data, 'base64');
+  if (!bytes.length || bytes.length > MAX_IMAGE_BYTES || !imageTypeMatches(extension, detectedImageType(bytes))) {
+    sendJson(res, 400, { error: 'Replacement must match the existing image type and be under 15MB' }); return;
+  }
+  const absolute = path.resolve(SITE_ROOT, relative);
+  if (!absolute.startsWith(IMAGES_ROOT + path.sep) || !fs.existsSync(absolute)) {
+    sendJson(res, 404, { error: 'Media not found' }); return;
+  }
+  const tmp = absolute + '.tmp'; fs.writeFileSync(tmp, bytes); fs.renameSync(tmp, absolute);
+  sendJson(res, 200, { ok: true, bytes: bytes.length });
 }
 
 function revisionFiles() {
@@ -507,6 +623,10 @@ function handleUploadImage(body, res) {
   }
   if (bytes.length === 0) {
     sendJson(res, 400, { error: 'Invalid base64 data' });
+    return;
+  }
+  if (!imageTypeMatches(ext, detectedImageType(bytes))) {
+    sendJson(res, 400, { error: 'File contents do not match the image extension' });
     return;
   }
   if (bytes.length > MAX_IMAGE_BYTES) {
@@ -772,6 +892,10 @@ const server = http.createServer(async (req, res) => {
         handleStructuredDocument(res);
         return;
       }
+      if (pathname === '/api/media' && req.method === 'GET') {
+        handleMediaList(res);
+        return;
+      }
       if (req.method === 'POST') {
         const contentType = String(req.headers['content-type'] || '').toLowerCase();
         if (!contentType.startsWith('application/json')) {
@@ -803,6 +927,15 @@ const server = http.createServer(async (req, res) => {
             return;
           case '/api/revisions/restore':
             await handleRestoreRevision(body, res);
+            return;
+          case '/api/media/metadata':
+            handleMediaMetadata(body, res);
+            return;
+          case '/api/media/delete':
+            handleMediaDelete(body, res);
+            return;
+          case '/api/media/replace':
+            handleMediaReplace(body, res);
             return;
         }
       }

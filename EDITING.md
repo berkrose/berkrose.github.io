@@ -21,8 +21,8 @@ The editor workspace has five tabs:
 - **Layers** lists the sections on the current page. Select one to jump to it.
 - **Add** creates projects and sections.
 - **Design** opens the site theme controls.
-- **Media** is reserved for the upcoming central media library. Photo controls remain
-  directly on images for now.
+- **Media** opens the central image and file library. Photo controls remain directly
+  on images as a fast shortcut.
 
 On a phone, tap a workspace tab to open its drawer and tap **Close** when finished.
 Use **Preview** in the top bar to hide all editing controls and see the page as a
@@ -78,6 +78,16 @@ Every project has a **PHOTOS** button on its image. Click it to:
 - **Delete** — the × removes a photo (a project always keeps at least one)
 
 New photos are automatically shrunk to a web-friendly size.
+
+### Media library
+Open **Media** to search every uploaded image and the resume. Each item shows file size
+and exact usage count. Media details include a display name, alternative text, caption,
+credit, focal point, and archive setting.
+
+The library detects duplicate files by content. Replacing an image keeps its path, so
+every place using it updates together. Files still referenced by content cannot be
+deleted; unused images show a **Delete unused** action. Uploads are checked against their
+actual file type rather than trusting the filename.
 
 To change your **profile photo** on the About page, click it while editing.
 

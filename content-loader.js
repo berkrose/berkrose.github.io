@@ -54,6 +54,10 @@
         el.src = value;
       }
     });
+    document.querySelectorAll('[data-content-alt]').forEach(function (el) {
+      var value = resolve(CONTENT, el.getAttribute('data-content-alt'));
+      if (typeof value === 'string' && value.length > 0) el.alt = value;
+    });
 
     // Editable link destinations: data-content-href sets href from a value,
     // data-content-mailto sets href to mailto: + the value (an email address).

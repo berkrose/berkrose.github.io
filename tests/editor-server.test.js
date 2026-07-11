@@ -303,6 +303,49 @@ test('rejects unsafe image upload destinations', async () => {
   assert.equal(response.status, 400);
 });
 
+test('media library tracks usage, duplicates, metadata, and safe deletion', async () => {
+  const referenced = validContent('Media usage');
+  referenced.about.profilePhoto = 'assets/images/profile.jpeg';
+  await fetch(baseUrl + '/api/content', {
+    method: 'POST', headers: apiHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify(referenced),
+  });
+  write('assets/images/unused-a.jpg', Buffer.from([0xff, 0xd8, 0xff, 0xd9]));
+  write('assets/images/unused-b.jpg', Buffer.from([0xff, 0xd8, 0xff, 0xd9]));
+
+  const listResponse = await fetch(baseUrl + '/api/media', { headers: apiHeaders() });
+  const list = await listResponse.json();
+  assert.equal(listResponse.status, 200);
+  const profile = list.media.find((item) => item.path === 'assets/images/profile.jpeg');
+  const unused = list.media.find((item) => item.path === 'assets/images/unused-a.jpg');
+  assert.equal(profile.usageCount, 1);
+  assert.equal(unused.usageCount, 0);
+  assert.equal(unused.duplicate, true);
+
+  const metadataResponse = await fetch(baseUrl + '/api/media/metadata', {
+    method: 'POST', headers: apiHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify({ path: unused.path, label: 'Unused test', alt: 'Test alt', focalX: 25, focalY: 75 }),
+  });
+  assert.equal(metadataResponse.status, 200);
+
+  const usedDelete = await fetch(baseUrl + '/api/media/delete', {
+    method: 'POST', headers: apiHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify({ path: profile.path }),
+  });
+  assert.equal(usedDelete.status, 409);
+  const unusedDelete = await fetch(baseUrl + '/api/media/delete', {
+    method: 'POST', headers: apiHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify({ path: unused.path }),
+  });
+  assert.equal(unusedDelete.status, 200);
+  assert.equal(fs.existsSync(path.join(fixtureRoot, unused.path)), false);
+});
+
+test('rejects image bytes that do not match their extension', async () => {
+  const response = await fetch(baseUrl + '/api/upload-image', {
+    method: 'POST', headers: apiHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify({ folder: 'library', filename: 'fake.png', data: Buffer.from('not a png').toString('base64') }),
+  });
+  assert.equal(response.status, 400);
+});
+
 test('discard restores editor-owned files but preserves unrelated work', async () => {
   write('README.md', 'valuable unrelated work\n');
   write('content.js', contentSource(validContent('Temporary edit')));

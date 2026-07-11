@@ -2481,6 +2481,134 @@
     foot.appendChild(savePage); modal.appendChild(foot); backdrop.appendChild(modal); document.body.appendChild(backdrop);
   }
 
+  var mediaLibraryItems = [];
+
+  function formatBytes(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return Math.round(bytes / 1024) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  }
+
+  function renderMediaGrid(host, query) {
+    var grid = host.querySelector('.ed-media-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+    var needle = (query || '').toLowerCase();
+    mediaLibraryItems.filter(function (item) {
+      return !needle || (item.label || item.path).toLowerCase().indexOf(needle) !== -1;
+    }).forEach(function (item) {
+      var card = make('button', 'ed-media-card' + (item.archived ? ' ed-media-archived' : ''));
+      card.type = 'button';
+      var preview = make('div', 'ed-media-preview');
+      if (item.type === 'image') {
+        var img = document.createElement('img'); img.src = '/' + item.path; img.alt = item.alt || ''; img.setAttribute('data-editor', ''); preview.appendChild(img);
+      } else preview.appendChild(make('span', 'ed-media-file-icon', 'PDF'));
+      card.appendChild(preview);
+      card.appendChild(make('span', 'ed-media-name', item.label || item.path.split('/').pop()));
+      card.appendChild(make('span', 'ed-media-meta', formatBytes(item.bytes) + ' · ' + item.usageCount + ' use' + (item.usageCount === 1 ? '' : 's')));
+      var badges = make('span', 'ed-media-badges');
+      if (item.usageCount === 0) badges.appendChild(make('span', '', 'Unused'));
+      if (item.duplicate) badges.appendChild(make('span', '', 'Duplicate'));
+      if (item.archived) badges.appendChild(make('span', '', 'Archived'));
+      card.appendChild(badges);
+      card.addEventListener('click', function () { openMediaDetails(item); });
+      grid.appendChild(card);
+    });
+    if (!grid.children.length) grid.appendChild(make('p', 'ed-workspace-empty', 'No media matches this search.'));
+  }
+
+  function loadMediaLibrary(host) {
+    fetch('/api/media', { headers: { 'X-Portfolio-Editor-Token': sessionToken } })
+      .then(function (response) { return response.json(); })
+      .then(function (data) {
+        mediaLibraryItems = data.media || [];
+        renderMediaGrid(host, host.querySelector('.ed-media-search').value);
+      }).catch(function () {
+        var grid = host.querySelector('.ed-media-grid'); if (grid) grid.appendChild(make('p', 'ed-workspace-empty', 'Could not load media.'));
+      });
+  }
+
+  function uploadLibraryMedia(host) {
+    var input = document.createElement('input'); input.type = 'file'; input.multiple = true;
+    input.accept = 'image/png,image/jpeg,image/webp'; input.setAttribute('data-editor', '');
+    input.addEventListener('change', function () {
+      var files = Array.prototype.slice.call(input.files || []); var chain = Promise.resolve();
+      files.forEach(function (file) {
+        chain = chain.then(function () { return processImageFile(file); }).then(function (out) {
+          return api('/api/upload-image', { folder: 'library', filename: safeBaseName(file.name) + out.ext, data: out.base64 });
+        });
+      });
+      chain.then(function () { toast('Media uploaded', 'ok'); loadMediaLibrary(host); refreshStatus(); })
+        .catch(function (error) { toast('Could not upload media: ' + error.message, 'error', 6000); });
+    });
+    input.click();
+  }
+
+  function renderMediaLibrary(host) {
+    var controls = make('div', 'ed-media-controls');
+    var search = document.createElement('input'); search.type = 'search'; search.placeholder = 'Search media'; search.className = 'ed-media-search'; search.setAttribute('data-editor', '');
+    search.addEventListener('input', function () { renderMediaGrid(host, search.value); });
+    var upload = make('button', 'ed-btn ed-btn-save', 'Upload'); upload.type = 'button'; upload.addEventListener('click', function () { uploadLibraryMedia(host); });
+    controls.appendChild(search); controls.appendChild(upload); host.appendChild(controls);
+    host.appendChild(make('div', 'ed-media-grid'));
+    loadMediaLibrary(host);
+  }
+
+  function openMediaDetails(item) {
+    var backdrop = make('div', 'ed-backdrop');
+    var modal = make('div', 'ed-modal ed-media-modal');
+    var head = make('div', 'ed-modal-head'); head.appendChild(make('h3', '', item.label || item.path.split('/').pop()));
+    var close = make('button', 'ed-modal-close', '×'); close.type = 'button'; close.addEventListener('click', function () { backdrop.remove(); }); head.appendChild(close); modal.appendChild(head);
+    var body = make('div', 'ed-media-detail-body');
+    if (item.type === 'image') { var preview = document.createElement('img'); preview.src = '/' + item.path; preview.alt = item.alt || ''; preview.setAttribute('data-editor', ''); body.appendChild(preview); }
+    var form = make('div', 'ed-media-detail-form'); var fields = {};
+    [['label','Display name'],['alt','Alternative text'],['caption','Caption'],['credit','Credit']].forEach(function (field) {
+      var label = make('label', 'ed-setting-field'); label.appendChild(make('span', '', field[1]));
+      var input = document.createElement('input'); input.type = 'text'; input.value = item[field[0]] || ''; input.setAttribute('data-editor', ''); fields[field[0]] = input; label.appendChild(input); form.appendChild(label);
+    });
+    [['focalX','Focal point X'],['focalY','Focal point Y']].forEach(function (field) {
+      var label = make('label', 'ed-setting-field'); label.appendChild(make('span', '', field[1]));
+      var input = document.createElement('input'); input.type = 'range'; input.min = '0'; input.max = '100'; input.value = item[field[0]] || 50; input.setAttribute('data-editor', ''); fields[field[0]] = input; label.appendChild(input); form.appendChild(label);
+    });
+    var archivedLabel = make('label', 'ed-check-label'); var archived = document.createElement('input'); archived.type = 'checkbox'; archived.checked = !!item.archived; archived.setAttribute('data-editor', ''); archivedLabel.appendChild(archived); archivedLabel.appendChild(make('span', '', 'Archive in media library')); form.appendChild(archivedLabel);
+    form.appendChild(make('p', 'ed-workspace-note', item.path + ' · ' + formatBytes(item.bytes) + ' · ' + item.usageCount + ' references'));
+    body.appendChild(form); modal.appendChild(body);
+    var foot = make('div', 'ed-modal-foot');
+    if (item.type === 'image') {
+      var replace = make('button', 'ed-btn ed-btn-ghost', 'Replace file'); replace.type = 'button';
+      replace.addEventListener('click', function () {
+        var picker = document.createElement('input'); picker.type = 'file'; picker.accept = 'image/png,image/jpeg,image/webp'; picker.setAttribute('data-editor', '');
+        picker.addEventListener('change', function () {
+          var file = picker.files && picker.files[0]; if (!file) return;
+          processImageFile(file).then(function (out) { return api('/api/media/replace', { path: item.path, data: out.base64 }); })
+            .then(function (response) { if (!response.ok) throw new Error(response.data.error); backdrop.remove(); renderWorkspacePanel('media'); toast('Media replaced everywhere it is used', 'ok', 4500); })
+            .catch(function (error) { toast('Could not replace media: ' + error.message, 'error', 6000); });
+        }); picker.click();
+      }); foot.appendChild(replace);
+    }
+    if (item.usageCount === 0 && item.type === 'image') {
+      var remove = make('button', 'ed-btn ed-btn-ghost', 'Delete unused'); remove.type = 'button';
+      remove.addEventListener('click', function () { if (!confirm('Permanently delete this unused file?')) return; api('/api/media/delete', { path: item.path }).then(function (response) { if (!response.ok) throw new Error(response.data.error); backdrop.remove(); renderWorkspacePanel('media'); toast('Unused media deleted', 'ok'); }).catch(function (error) { toast(error.message, 'error'); }); }); foot.appendChild(remove);
+    }
+    var saveMeta = make('button', 'ed-btn ed-btn-save', 'Save metadata'); saveMeta.type = 'button';
+    saveMeta.addEventListener('click', function () {
+      api('/api/media/metadata', { path: item.path, label: fields.label.value, alt: fields.alt.value, caption: fields.caption.value, credit: fields.credit.value, focalX: fields.focalX.value, focalY: fields.focalY.value, archived: archived.checked })
+        .then(function (response) {
+          if (!response.ok) throw new Error(response.data.error);
+          if (fields.alt.value.trim()) {
+            Object.keys(draft.projects || {}).forEach(function (key) {
+              var project = draft.projects[key];
+              if (project.images && project.images[0] === item.path) project.imageAlt = fields.alt.value.trim();
+            });
+            if (draft.about && draft.about.profilePhoto === item.path) draft.about.profileAlt = fields.alt.value.trim();
+            markUnsaved();
+          }
+          backdrop.remove(); renderWorkspacePanel('media'); toast('Media metadata saved', 'ok');
+        })
+        .catch(function (error) { toast(error.message, 'error'); });
+    }); foot.appendChild(saveMeta); modal.appendChild(foot); backdrop.appendChild(modal); document.body.appendChild(backdrop);
+  }
+
   function moveNavigationItem(id, direction) {
     draft.siteNavigation = draft.siteNavigation || ['projects', 'about'];
     var index = draft.siteNavigation.indexOf(id), target = index + direction;
@@ -2648,7 +2776,7 @@
       return;
     }
 
-    sidebarPanel.appendChild(make('p', 'ed-workspace-empty', 'Your centralized image and file library will appear here in Milestone 8. Project and section photo controls still work directly on the page.'));
+    renderMediaLibrary(sidebarPanel);
   }
 
   function buildWorkspace() {

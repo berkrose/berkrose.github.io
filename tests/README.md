@@ -47,6 +47,11 @@ Milestone 7 integration checks generate and remove custom static pages in an iso
 fixture. Browser checks verify dynamic desktop, phone, and footer navigation plus the
 Pages settings interface without changing portfolio content.
 
+Milestone 8 tests verify media inventory, SHA-256 duplicate detection, reference counts,
+metadata, image signatures, replacement boundaries, and refusal to delete used files.
+Browser checks loaded 33 current assets, filtered to the profile image, and confirmed
+that used media exposes no delete action.
+
 At baseline creation:
 
 - No horizontal overflow was detected at the mobile viewport.
