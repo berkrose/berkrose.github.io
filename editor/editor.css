@@ -305,6 +305,10 @@ body.ed-preview-mode .ed-selected-section { outline: none !important; }
 
 /* Add-section picker */
 .ed-modal-sm { max-width: 460px; }
+.ed-section-library-modal { max-width: 760px; }
+.ed-section-library-modal .ed-section-picker {
+  grid-template-columns: repeat(3, minmax(0, 1fr)); overflow-y: auto;
+}
 .ed-section-picker {
   display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 20px;
 }
@@ -318,6 +322,10 @@ body.ed-preview-mode .ed-selected-section { outline: none !important; }
   font-size: 13px; font-weight: 700; color: #161616;
 }
 .ed-section-card-desc { font-size: 11px; color: #8a8a8a; }
+.ed-section-card-disabled { opacity: .5; cursor: not-allowed; background: #eee; }
+@media (max-width: 680px) {
+  .ed-section-library-modal .ed-section-picker { grid-template-columns: 1fr 1fr; }
+}
 
 /* ── Resume upload (Download Resume button in edit mode) ─────────────────── */
 .ed-resume-btn { position: relative; outline: 1.5px dashed var(--ed-red); outline-offset: 3px; }
@@ -413,6 +421,14 @@ body.ed-preview-mode .ed-selected-section { outline: none !important; }
 .ed-visibility-row { display: flex; align-items: center; flex-wrap: wrap; gap: 14px; padding-top: 4px; }
 .ed-visibility-row .ed-layout-label { margin-right: auto; }
 .ed-check-label { display: flex; align-items: center; gap: 5px; color: #333; font: 11px/1 var(--ed-font); }
+.ed-project-details-modal { max-width: 680px; }
+.ed-details-form { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; padding: 20px; overflow-y: auto; }
+.ed-details-outcome { grid-column: 1 / -1; }
+.ed-details-form textarea {
+  width: 100%; resize: vertical; border: 1px solid #ccc; padding: 9px; background: #fff;
+  color: #161616; font: 12px/1.4 var(--ed-font); text-transform: none;
+}
+@media (max-width: 600px) { .ed-details-form { grid-template-columns: 1fr; } .ed-details-outcome { grid-column: auto; } }
 .section-inverse [class*="text-primary"], .section-inverse [class*="text-on-surface"] { color: inherit !important; }
 
 @media (max-width: 520px) {

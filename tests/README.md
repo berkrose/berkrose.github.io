@@ -38,6 +38,11 @@ Milestone 4 browser checks verified project duplicate/copy/paste and custom-sect
 duplicate operations as single undoable transactions, returning the real content to its
 original state with no console errors.
 
+Milestone 5 browser checks verified responsive columns at desktop and phone widths,
+section styling, no mobile overflow, and complete undo recovery. Milestone 6 checks
+rendered the expanded block library, repeated-item controls, and project metadata with
+all test mutations undone and no console errors.
+
 At baseline creation:
 
 - No horizontal overflow was detected at the mobile viewport.

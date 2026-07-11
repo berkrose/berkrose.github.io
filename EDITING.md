@@ -96,6 +96,15 @@ and on the About page the biography, expertise, quote, and closing.
 - **Reusable templates** — use **★** on a custom section to save its content and styling
   as a template. Saved templates appear in the Add Section picker.
 
+The section library also includes responsive columns, button groups, video, stats,
+timelines, testimonials, skills, experience, education, downloads, dividers, and
+spacers. Repeated items have **+ item** and **×** controls. Contact Form remains disabled
+until a secure form-delivery service is configured.
+
+Use a section's **⚙** control for width, spacing, alignment, background, content gap,
+minimum height, anchor name, and desktop/tablet/phone visibility. Column sections can
+contain one to four columns and automatically collapse to one column on phones.
+
 The **Layers** tab also supports section reordering with arrow buttons or drag and drop.
 Header and Footer appear there as **Global** layers because their content is shared on
 every page.
@@ -136,6 +145,10 @@ It opens options for that one project:
   photo without cropping.
 - **Shape** — the photo frame's proportions (Wide / Standard / Photo / Square).
 - **Background** — a plain or lightly tinted panel behind the project.
+
+Use the project's **i** control for case-study details: role, duration, tools, team,
+outcome, and an external project link. Filled fields appear with the project while empty
+fields stay hidden.
 
 ---
 

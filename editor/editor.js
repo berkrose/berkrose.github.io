@@ -826,6 +826,51 @@
     });
   }
 
+  function defaultSectionListItem(type, index) {
+    if (type === 'columns') return { heading: 'Column ' + (index + 1), body: ['Add your content here.'] };
+    if (type === 'buttons') return { label: 'New action', url: '#' };
+    if (type === 'stats') return { value: '0', label: 'New stat' };
+    if (type === 'timeline' || type === 'experience' || type === 'education') {
+      return { meta: String(new Date().getFullYear()), title: 'New entry', body: 'Describe this entry.' };
+    }
+    return 'New skill';
+  }
+
+  function adornSectionLists() {
+    document.querySelectorAll('[data-section-list]').forEach(function (wrap) {
+      var path = wrap.dataset.sectionList;
+      var section = wrap.closest('[data-custom-section]');
+      if (!section) return;
+      var id = section.getAttribute('data-custom-section');
+      var data = draft.sectionData && draft.sectionData[id];
+      var items = getPath(draft, path);
+      if (!data || !Array.isArray(items)) return;
+      Array.prototype.slice.call(wrap.children).forEach(function (child, index) {
+        if (child.hasAttribute('data-editor')) return;
+        child.classList.add('ed-hostrel');
+        if (child.querySelector(':scope > .ed-x')) return;
+        var remove = make('button', 'ed-x', '×');
+        remove.type = 'button'; remove.title = 'Remove this item';
+        remove.addEventListener('click', function (event) {
+          event.preventDefault(); event.stopPropagation();
+          if (items.length <= 1) { toast('Keep at least one item in this section.', 'info'); return; }
+          pushHistory(); items.splice(index, 1); markUnsaved();
+          if (window.renderSections) window.renderSections(); enhance();
+        });
+        child.appendChild(remove);
+      });
+      if (!wrap.parentElement.querySelector(':scope > .ed-add-list-item')) {
+        var add = make('button', 'ed-add-para ed-add-list-item', '+ item');
+        add.type = 'button'; add.title = 'Add another item';
+        add.addEventListener('click', function () {
+          pushHistory(); items.push(defaultSectionListItem(data.type, items.length)); markUnsaved();
+          if (window.renderSections) window.renderSections(); enhance();
+        });
+        wrap.parentElement.appendChild(add);
+      }
+    });
+  }
+
   // ── Per-project move / delete controls ────────────────────────────────────
   function adornProjectControls() {
     var sections = document.querySelectorAll('[data-project-key]');
@@ -854,6 +899,11 @@
       layoutBtn.title = 'Layout options (image side, shape, background)';
       layoutBtn.addEventListener('click', function () { openLayoutPopover(key); });
 
+      var detailsBtn = make('button', '', 'i');
+      detailsBtn.type = 'button';
+      detailsBtn.title = 'Project details and case-study metadata';
+      detailsBtn.addEventListener('click', function () { openProjectDetails(key); });
+
       var duplicate = make('button', '', '⧉');
       duplicate.type = 'button';
       duplicate.title = 'Duplicate this project';
@@ -881,11 +931,50 @@
       box.appendChild(up);
       box.appendChild(down);
       box.appendChild(layoutBtn);
+      box.appendChild(detailsBtn);
       box.appendChild(duplicate);
       box.appendChild(copy);
       box.appendChild(del);
       section.appendChild(box);
     });
+  }
+
+  function openProjectDetails(key) {
+    if (editing) commitEdit();
+    var project = draft.projects[key];
+    if (!project) return;
+    var existing = document.getElementById('ed-project-details-modal');
+    if (existing) existing.remove();
+    var current = project.details || {};
+    var backdrop = make('div', 'ed-backdrop');
+    backdrop.id = 'ed-project-details-modal';
+    var modal = make('div', 'ed-modal ed-project-details-modal');
+    var head = make('div', 'ed-modal-head');
+    head.appendChild(make('h3', '', 'Project details - ' + (project.title || key)));
+    var close = make('button', 'ed-modal-close', '×'); close.type = 'button';
+    close.addEventListener('click', function () { backdrop.remove(); }); head.appendChild(close); modal.appendChild(head);
+    var form = make('div', 'ed-details-form');
+    var inputs = {};
+    [['role','Role','Lead designer'],['duration','Duration','12 weeks'],['tools','Tools','CAD, prototyping, research'],['team','Team','Four-person team'],['externalLabel','Link label','View project'],['externalUrl','External link','https://...']]
+      .forEach(function (field) {
+        var label = make('label', 'ed-setting-field'); label.appendChild(make('span', '', field[1]));
+        var input = document.createElement('input'); input.type = 'text'; input.placeholder = field[2]; input.value = current[field[0]] || '';
+        input.setAttribute('data-editor', ''); inputs[field[0]] = input; label.appendChild(input); form.appendChild(label);
+      });
+    var outcomeLabel = make('label', 'ed-setting-field ed-details-outcome'); outcomeLabel.appendChild(make('span', '', 'Outcome'));
+    var outcome = document.createElement('textarea'); outcome.rows = 4; outcome.placeholder = 'What changed or improved?'; outcome.value = current.outcome || '';
+    outcome.setAttribute('data-editor', ''); inputs.outcome = outcome; outcomeLabel.appendChild(outcome); form.appendChild(outcomeLabel);
+    modal.appendChild(form);
+    var foot = make('div', 'ed-modal-foot');
+    var cancel = make('button', 'ed-btn ed-btn-ghost', 'Cancel'); cancel.type = 'button'; cancel.addEventListener('click', function () { backdrop.remove(); });
+    var saveDetails = make('button', 'ed-btn ed-btn-save', 'Save details'); saveDetails.type = 'button';
+    saveDetails.addEventListener('click', function () {
+      pushHistory();
+      project.details = {};
+      Object.keys(inputs).forEach(function (name) { var value = inputs[name].value.trim(); if (value) project.details[name] = value; });
+      markUnsaved(); backdrop.remove(); rerender(); toast('Project details updated', 'ok');
+    });
+    foot.appendChild(cancel); foot.appendChild(saveDetails); modal.appendChild(foot); backdrop.appendChild(modal); document.body.appendChild(backdrop);
   }
 
   // ── Per-project layout popover ────────────────────────────────────────────
@@ -1825,7 +1914,7 @@
     backdrop.id = 'ed-section-modal';
     backdrop.addEventListener('click', function (e) { if (e.target === backdrop) backdrop.remove(); });
 
-    var modal = make('div', 'ed-modal ed-modal-sm');
+    var modal = make('div', 'ed-modal ed-section-library-modal');
     var head = make('div', 'ed-modal-head');
     head.appendChild(make('h3', '', 'Add a section'));
     var close = make('button', 'ed-modal-close', '×');
@@ -1839,7 +1928,18 @@
      ['textImage', 'Text + photo', 'Words beside a photo'],
      ['gallery', 'Photo gallery', 'A grid of photos'],
      ['quote', 'Quote', 'A big centered quote'],
-     ['columns', 'Columns', 'Responsive side-by-side content']].forEach(function (t) {
+     ['columns', 'Columns', 'Responsive side-by-side content'],
+     ['buttons', 'Buttons', 'Calls to action and links'],
+     ['video', 'Video', 'YouTube or Vimeo embed'],
+     ['stats', 'Stats', 'Large outcomes and numbers'],
+     ['timeline', 'Timeline', 'Dated milestones or process'],
+     ['testimonial', 'Testimonial', 'Quote with attribution'],
+     ['skills', 'Skills', 'A flexible skill list'],
+     ['experience', 'Experience', 'Roles and accomplishments'],
+     ['education', 'Education', 'Degrees and coursework'],
+     ['download', 'Download', 'A downloadable file button'],
+     ['divider', 'Divider', 'A restrained visual separator'],
+     ['spacer', 'Spacer', 'Adjustable breathing room']].forEach(function (t) {
       var card = make('button', 'ed-section-card');
       card.type = 'button';
       card.appendChild(make('span', 'ed-section-card-title', t[1]));
@@ -1862,6 +1962,11 @@
       });
       picker.appendChild(card);
     });
+    var contactCard = make('button', 'ed-section-card ed-section-card-disabled');
+    contactCard.type = 'button'; contactCard.disabled = true;
+    contactCard.appendChild(make('span', 'ed-section-card-title', 'Contact form'));
+    contactCard.appendChild(make('span', 'ed-section-card-desc', 'Requires a secure form service before it can be enabled'));
+    picker.appendChild(contactCard);
     modal.appendChild(picker);
     backdrop.appendChild(modal);
     document.body.appendChild(backdrop);
@@ -1888,6 +1993,24 @@
           { heading: 'Second column', body: ['Add your content here.'] }
         ]
       };
+    } else if (type === 'buttons') {
+      data = { type: type, heading: 'Take the next step', body: 'Add a short supporting message.', buttons: [{ label: 'Primary action', url: '#' }, { label: 'Secondary action', url: '#' }] };
+    } else if (type === 'video') {
+      data = { type: type, heading: 'Featured video', url: '', urlLabel: 'Change video link', caption: '' };
+    } else if (type === 'stats') {
+      data = { type: type, heading: 'Project outcomes', items: [{ value: '25%', label: 'Improvement' }, { value: '8', label: 'Prototypes' }, { value: '12', label: 'Interviews' }] };
+    } else if (type === 'timeline' || type === 'experience' || type === 'education') {
+      data = { type: type, heading: type === 'education' ? 'Education' : (type === 'experience' ? 'Experience' : 'Timeline'), items: [{ meta: '2026', title: 'First entry', body: 'Describe the milestone, role, or program.' }, { meta: '2025', title: 'Second entry', body: 'Add another useful detail.' }] };
+    } else if (type === 'testimonial') {
+      data = { type: type, quote: 'Add a meaningful quote here.', attribution: 'Name', role: 'Role or organization' };
+    } else if (type === 'skills') {
+      data = { type: type, heading: 'Skills', items: ['Product design', 'Prototyping', 'Engineering'] };
+    } else if (type === 'download') {
+      data = { type: type, heading: 'Download', body: 'Offer a useful file or resource.', label: 'Download file', url: 'assets/resume.pdf' };
+    } else if (type === 'divider') {
+      data = { type: type };
+    } else if (type === 'spacer') {
+      data = { type: type, height: 64 };
     } else {
       data = { type: 'text', label: 'Section', heading: 'New section', body: ['Write something here.'] };
     }
@@ -2123,13 +2246,17 @@
       var val = input.value.trim();
       if (kind === 'mailto') {
         if (val.indexOf('@') === -1) { toast('That does not look like an email address.', 'error', 4000); return; }
-      } else if (val && !/^(https?:\/\/|mailto:)/i.test(val)) {
+      } else if (val && !/^(https?:\/\/|mailto:|assets\/|\/|#)/i.test(val)) {
         val = 'https://' + val;
       }
       pushHistory();
       setPath(draft, path, val);
       if (window.applyContent) window.applyContent();
       markUnsaved();
+      if (anchor.closest('[data-custom-section]') && window.renderSections) {
+        window.renderSections();
+        enhance();
+      }
       closeLinkPopover();
       toast('Link updated', 'ok', 2500);
     }
@@ -2173,6 +2300,7 @@
     document.querySelectorAll('[data-content]').forEach(setupEditable);
     adornTags();
     adornParagraphLists();
+    adornSectionLists();
     adornProjectControls();
     adornPhotoButtons();
     adornSections();

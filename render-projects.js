@@ -155,6 +155,31 @@
     body.appendChild(tagRow);
     body.appendChild(stamped("h2", "text-3xl md:text-4xl font-headline font-bold tracking-[-0.02em] mb-6", project.title, cp + "title"));
     body.appendChild(stamped("p", "text-sm text-on-surface-variant leading-relaxed max-w-md", project.description, cp + "description"));
+    if (project.details) {
+      const details = el("dl", "grid grid-cols-2 gap-x-6 gap-y-4 mt-8");
+      [["Role", "role"], ["Duration", "duration"], ["Tools", "tools"], ["Team", "team"]].forEach(function (field) {
+        if (!project.details[field[1]]) return;
+        const group = document.createElement("div");
+        group.appendChild(el("dt", "font-label text-[0.625rem] tracking-[0.1em] uppercase text-zinc-400", field[0]));
+        group.appendChild(stamped("dd", "text-sm text-on-surface-variant mt-1", project.details[field[1]], cp + "details." + field[1]));
+        details.appendChild(group);
+      });
+      if (details.children.length) body.appendChild(details);
+      if (project.details.outcome) {
+        const outcome = el("div", "mt-6 border-l-2 border-secondary pl-4");
+        outcome.appendChild(el("div", "font-label text-[0.625rem] tracking-[0.1em] uppercase text-secondary", "Outcome"));
+        outcome.appendChild(stamped("p", "text-sm text-on-surface-variant mt-1", project.details.outcome, cp + "details.outcome"));
+        body.appendChild(outcome);
+      }
+      if (project.details.externalUrl) {
+        const external = stamped("a", "inline-flex mt-5 font-label text-xs uppercase text-secondary underline", project.details.externalLabel || "View project", cp + "details.externalLabel");
+        external.href = project.details.externalUrl;
+        external.target = "_blank";
+        external.rel = "noopener noreferrer";
+        external.setAttribute("data-content-href", cp + "details.externalUrl");
+        body.appendChild(external);
+      }
+    }
     col.appendChild(body);
 
     // Institution + year

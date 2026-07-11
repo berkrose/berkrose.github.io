@@ -172,6 +172,7 @@
     sec.appendChild(stampedEl('h2', HEADING_CLASS, data.heading || '', 'sectionData.' + id + '.heading'));
     var grid = elc('div', 'section-columns-grid gap-8');
     grid.dataset.layoutGrid = '';
+    grid.dataset.sectionList = 'sectionData.' + id + '.columns';
     grid.dataset.columns = String(Math.max(1, Math.min(4, (data.columns || []).length || 2)));
     (data.columns || []).forEach(function (column, columnIndex) {
       var item = elc('div', 'space-y-4');
@@ -185,6 +186,127 @@
     return sec;
   }
 
+  function buildButtonsSection(id, data) {
+    var sec = elc('section', 'px-8 py-20 max-w-4xl mx-auto space-y-6');
+    sec.appendChild(stampedEl('h2', HEADING_CLASS, data.heading || '', 'sectionData.' + id + '.heading'));
+    if (data.body) sec.appendChild(stampedEl('p', BODY_P_CLASS + ' max-w-2xl', data.body, 'sectionData.' + id + '.body'));
+    var row = elc('div', 'flex flex-wrap gap-3');
+    row.dataset.sectionList = 'sectionData.' + id + '.buttons';
+    (data.buttons || []).forEach(function (button, index) {
+      var holder = elc('div', 'inline-flex');
+      var link = stampedEl('a', index === 0 ? 'inline-flex px-6 py-3 bg-primary text-white font-label text-xs uppercase' : 'inline-flex px-6 py-3 border border-primary text-primary font-label text-xs uppercase', button.label || '', 'sectionData.' + id + '.buttons.' + index + '.label');
+      link.href = button.url || '#';
+      link.setAttribute('data-content-href', 'sectionData.' + id + '.buttons.' + index + '.url');
+      holder.appendChild(link); row.appendChild(holder);
+    });
+    sec.appendChild(row);
+    return sec;
+  }
+
+  function videoEmbedUrl(value) {
+    try {
+      var url = new URL(value);
+      var host = url.hostname.replace(/^www\./, '');
+      if (host === 'youtu.be') return 'https://www.youtube-nocookie.com/embed/' + encodeURIComponent(url.pathname.slice(1));
+      if (host === 'youtube.com' || host === 'm.youtube.com') {
+        var videoId = url.searchParams.get('v');
+        if (videoId) return 'https://www.youtube-nocookie.com/embed/' + encodeURIComponent(videoId);
+      }
+      if (host === 'vimeo.com' && /^\/\d+/.test(url.pathname)) {
+        return 'https://player.vimeo.com/video/' + encodeURIComponent(url.pathname.split('/')[1]);
+      }
+    } catch (error) {}
+    return '';
+  }
+
+  function buildVideoSection(id, data) {
+    var sec = elc('section', 'px-8 py-20 max-w-6xl mx-auto space-y-6');
+    sec.appendChild(stampedEl('h2', HEADING_CLASS, data.heading || '', 'sectionData.' + id + '.heading'));
+    var frame = elc('div', 'aspect-video bg-zinc-100 flex items-center justify-center overflow-hidden');
+    var embed = videoEmbedUrl(data.url || '');
+    if (embed) {
+      var iframe = document.createElement('iframe');
+      iframe.src = embed; iframe.title = data.heading || 'Video'; iframe.loading = 'lazy';
+      iframe.referrerPolicy = 'strict-origin-when-cross-origin';
+      iframe.allow = 'accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture';
+      iframe.allowFullscreen = true; iframe.className = 'w-full h-full'; frame.appendChild(iframe);
+    } else frame.appendChild(elc('span', 'font-label text-xs uppercase text-zinc-400', 'Add a YouTube or Vimeo link'));
+    sec.appendChild(frame);
+    var link = stampedEl('a', 'inline-flex text-sm text-secondary underline', data.urlLabel || 'Change video link', 'sectionData.' + id + '.urlLabel');
+    link.href = data.url || '#'; link.setAttribute('data-content-href', 'sectionData.' + id + '.url'); sec.appendChild(link);
+    if (data.caption) sec.appendChild(stampedEl('p', BODY_P_CLASS, data.caption, 'sectionData.' + id + '.caption'));
+    return sec;
+  }
+
+  function buildStatsSection(id, data) {
+    var sec = elc('section', 'px-8 py-20 max-w-6xl mx-auto space-y-8');
+    sec.appendChild(stampedEl('h2', HEADING_CLASS, data.heading || '', 'sectionData.' + id + '.heading'));
+    var grid = elc('div', 'section-columns-grid gap-8'); grid.dataset.layoutGrid = '';
+    grid.dataset.sectionList = 'sectionData.' + id + '.items';
+    grid.dataset.columns = String(Math.max(1, Math.min(4, (data.items || []).length)));
+    (data.items || []).forEach(function (item, index) {
+      var cell = elc('div', 'space-y-2');
+      cell.appendChild(stampedEl('div', 'text-4xl md:text-6xl font-headline font-bold text-secondary', item.value || '', 'sectionData.' + id + '.items.' + index + '.value'));
+      cell.appendChild(stampedEl('div', 'font-label text-xs uppercase text-on-surface-variant', item.label || '', 'sectionData.' + id + '.items.' + index + '.label'));
+      grid.appendChild(cell);
+    });
+    sec.appendChild(grid); return sec;
+  }
+
+  function buildListSection(id, data, kind) {
+    var sec = elc('section', 'px-8 py-20 max-w-5xl mx-auto space-y-8');
+    sec.appendChild(stampedEl('h2', HEADING_CLASS, data.heading || '', 'sectionData.' + id + '.heading'));
+    var list = elc('div', 'space-y-8');
+    list.dataset.sectionList = 'sectionData.' + id + '.items';
+    (data.items || []).forEach(function (item, index) {
+      var row = elc('article', 'grid md:grid-cols-[140px_1fr] gap-3 md:gap-8');
+      row.appendChild(stampedEl('div', 'font-label text-xs uppercase text-secondary font-bold', item.meta || '', 'sectionData.' + id + '.items.' + index + '.meta'));
+      var content = elc('div', 'space-y-2');
+      content.appendChild(stampedEl('h3', 'text-xl font-headline font-bold text-primary', item.title || '', 'sectionData.' + id + '.items.' + index + '.title'));
+      content.appendChild(stampedEl('p', BODY_P_CLASS, item.body || '', 'sectionData.' + id + '.items.' + index + '.body'));
+      row.appendChild(content); list.appendChild(row);
+    });
+    sec.dataset.listKind = kind; sec.appendChild(list); return sec;
+  }
+
+  function buildTestimonialSection(id, data) {
+    var sec = elc('section', 'px-8 py-20 max-w-5xl mx-auto text-center space-y-6');
+    sec.appendChild(stampedEl('blockquote', 'text-3xl md:text-5xl font-quote italic text-primary leading-tight', data.quote || '', 'sectionData.' + id + '.quote'));
+    sec.appendChild(stampedEl('div', 'font-label text-xs uppercase text-secondary font-bold', data.attribution || '', 'sectionData.' + id + '.attribution'));
+    sec.appendChild(stampedEl('div', BODY_P_CLASS, data.role || '', 'sectionData.' + id + '.role')); return sec;
+  }
+
+  function buildSkillsSection(id, data) {
+    var sec = elc('section', 'px-8 py-20 max-w-5xl mx-auto space-y-8');
+    sec.appendChild(stampedEl('h2', HEADING_CLASS, data.heading || '', 'sectionData.' + id + '.heading'));
+    var wrap = elc('div', 'flex flex-wrap gap-3');
+    wrap.dataset.sectionList = 'sectionData.' + id + '.items';
+    (data.items || []).forEach(function (item, index) {
+      var holder = elc('div', 'inline-flex');
+      holder.appendChild(stampedEl('span', 'border border-zinc-300 px-4 py-2 font-label text-xs uppercase', item, 'sectionData.' + id + '.items.' + index));
+      wrap.appendChild(holder);
+    });
+    sec.appendChild(wrap); return sec;
+  }
+
+  function buildDownloadSection(id, data) {
+    var sec = elc('section', 'px-8 py-16 max-w-4xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-6');
+    var text = elc('div', 'space-y-2');
+    text.appendChild(stampedEl('h2', HEADING_CLASS, data.heading || '', 'sectionData.' + id + '.heading'));
+    text.appendChild(stampedEl('p', BODY_P_CLASS, data.body || '', 'sectionData.' + id + '.body')); sec.appendChild(text);
+    var link = stampedEl('a', 'inline-flex px-6 py-3 bg-primary text-white font-label text-xs uppercase', data.label || '', 'sectionData.' + id + '.label');
+    link.href = data.url || '#'; link.setAttribute('data-content-href', 'sectionData.' + id + '.url'); link.setAttribute('download', ''); sec.appendChild(link);
+    return sec;
+  }
+
+  function buildDividerSection() {
+    var sec = elc('section', 'px-8 py-8 max-w-6xl mx-auto'); sec.appendChild(elc('div', 'h-px bg-outline-variant opacity-30')); return sec;
+  }
+
+  function buildSpacerSection(id, data) {
+    var sec = elc('section', 'w-full'); sec.style.height = Math.max(16, Math.min(320, Number(data.height) || 64)) + 'px'; return sec;
+  }
+
   function buildCustomSection(id, data) {
     var sec;
     switch (data.type) {
@@ -192,6 +314,17 @@
       case 'gallery':   sec = buildGallerySection(id, data); break;
       case 'quote':     sec = buildQuoteSection(id, data); break;
       case 'columns':   sec = buildColumnsSection(id, data); break;
+      case 'buttons':   sec = buildButtonsSection(id, data); break;
+      case 'video':     sec = buildVideoSection(id, data); break;
+      case 'stats':     sec = buildStatsSection(id, data); break;
+      case 'timeline':  sec = buildListSection(id, data, 'timeline'); break;
+      case 'experience': sec = buildListSection(id, data, 'experience'); break;
+      case 'education': sec = buildListSection(id, data, 'education'); break;
+      case 'testimonial': sec = buildTestimonialSection(id, data); break;
+      case 'skills':    sec = buildSkillsSection(id, data); break;
+      case 'download':  sec = buildDownloadSection(id, data); break;
+      case 'divider':   sec = buildDividerSection(); break;
+      case 'spacer':    sec = buildSpacerSection(id, data); break;
       default:          sec = buildTextSection(id, data); break;
     }
     sec.setAttribute('data-section', id);
