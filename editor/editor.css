@@ -219,6 +219,9 @@ body.ed-preview-mode .ed-selected-section { outline: none !important; }
   body.ed-shell-active.ed-preview-mode { padding: 0 !important; }
   body.ed-shell-active.ed-preview-mode > nav { top: 0 !important; }
 }
+@media (max-width: 520px) {
+  #ed-revisions { display: none; }
+}
 
 /* ── Editable text ───────────────────────────────────────────────────────── */
 .ed-editable { cursor: text; }

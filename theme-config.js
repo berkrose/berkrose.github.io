@@ -146,7 +146,7 @@
   window.THEME_PRESETS = { backgrounds: BACKGROUNDS, fonts: FONTS, accents: ACCENTS };
 
   // ── Tailwind config (identical to the original, themable tokens now var()) ───
-  tailwind.config = {
+  if (window.tailwind) tailwind.config = {
     darkMode: 'class',
     theme: {
       extend: {

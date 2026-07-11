@@ -67,7 +67,8 @@ At baseline creation:
 - No horizontal overflow was detected at the mobile viewport.
 - Visitor pages contained no editor markup.
 - The editor session token was present and 64 hexadecimal characters long.
-- The only browser warning was Tailwind Play CDN's production-use warning.
-- The simple visitor baseline server returned a non-blocking 404 for `favicon.ico`.
+- The production CSS build is about 23 KB minified and does not use Tailwind Play CDN.
+- The final editor and visitor browser passes produced no console errors, missing assets,
+  horizontal overflow, or editor markup in public output.
 
 Intentional visual changes must be reviewed against these images before replacing them.

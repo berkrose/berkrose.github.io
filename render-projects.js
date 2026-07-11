@@ -97,6 +97,8 @@
     img.id = "img-" + layout.idKey;
     img.src = project.images[0];
     img.alt = project.imageAlt || project.title || "";
+    img.loading = "lazy";
+    img.decoding = "async";
     img.className = "project-img w-full h-full " + (project.imageFit || "object-cover");
     img.dataset.mainFit = project.imageFit || "object-cover";
     img.style.transition = "opacity 0.2s ease";
@@ -117,6 +119,9 @@
       });
       const thumb = document.createElement("img");
       thumb.src = src;
+      thumb.loading = "lazy";
+      thumb.decoding = "async";
+      thumb.alt = "";
       thumb.className = "thumb-img w-16 h-12 object-cover";
       btn.appendChild(thumb);
       strip.appendChild(btn);

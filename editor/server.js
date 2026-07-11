@@ -252,9 +252,10 @@ function pageHtml(page) {
   return '<!DOCTYPE html>\n<html class="light" lang="en">\n<head>\n' +
     '<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">\n' +
     '<title>' + title + ' - Berkeley Skuratowicz</title>\n' +
+    '<link href="assets/images/profile.jpeg" rel="icon" type="image/jpeg">\n' +
     '<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Inter+Tight:wght@400;500;600;700&family=Cormorant+Garamond:ital,wght@1,600&display=swap" rel="stylesheet">\n' +
     '<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet">\n' +
-    '<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>\n' +
+    '<link href="assets/css/site.min.css" rel="stylesheet">\n' +
     '<script src="content.js"></script><script src="content-loader.js"></script><script src="sections.js"></script>\n' +
     '<script src="nav.js"></script><script src="lightbox.js"></script><script src="seo.js"></script><script src="theme-config.js"></script>\n' +
     '<style>body{background:var(--c-surface);color:#1a1c1c;font-family:var(--f-body),sans-serif}</style>\n' +

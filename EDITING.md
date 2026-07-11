@@ -235,6 +235,8 @@ Each publish check is saved in the private revision history for later reference.
   needs HTML editing.
 - `editor/` holds the local editor (a small Node server + the on-page tools). It runs
   only on your computer and is never part of what visitors load.
+- Public layout styles are compiled into `assets/css/site.min.css`. Developers run
+  `npm run build:css` after changing Tailwind classes; `npm run verify` does this too.
 - Publishing = a `git` commit and push to the `berkrose.github.io` repository on
   GitHub, which GitHub Pages serves as your live site.
 - `Launch Portfolio.command` still opens the plain site (no editor) if you just want

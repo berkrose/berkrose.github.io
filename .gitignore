@@ -3,3 +3,4 @@ portfolio-print.pdf
 thoughts/
 editor/server.log
 .editor-data/
+node_modules/

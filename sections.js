@@ -119,6 +119,8 @@
       var img = document.createElement('img');
       img.src = data.image;
       img.alt = data.imageAlt || '';
+      img.loading = 'lazy';
+      img.decoding = 'async';
       img.className = 'w-full h-full object-cover';
       frame.appendChild(img);
     } else {
@@ -149,6 +151,8 @@
         var img = document.createElement('img');
         img.src = src;
         img.alt = '';
+        img.loading = 'lazy';
+        img.decoding = 'async';
         img.className = 'w-full aspect-square object-cover';
         grid.appendChild(img);
       });

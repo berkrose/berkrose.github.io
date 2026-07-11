@@ -4,6 +4,11 @@
   "scripts": {
     "check": "node --check editor/server.js && node --check editor/editor.js",
     "test": "node --test --test-reporter=spec tests/*.test.js",
-    "verify": "npm run check && npm test"
+    "build:css": "tailwindcss -i assets/css/site.css -o assets/css/site.min.css --minify",
+    "verify": "npm run build:css && npm run check && npm test"
+  },
+  "devDependencies": {
+    "@tailwindcss/forms": "^0.5.10",
+    "tailwindcss": "^3.4.17"
   }
 }
