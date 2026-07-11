@@ -61,3 +61,14 @@ test('validation reports broken graph references', () => {
   document.pages.about.sections.push('missing-section');
   assert.ok(validateDocument(document).some((error) => error.includes('missing-section')));
 });
+
+test('custom pages migrate with their section registry', () => {
+  const content = loadContent();
+  content.sitePages = { process: { id: 'process', title: 'Process', slug: 'process.html', status: 'hidden' } };
+  content.sections = content.sections || {};
+  content.sections.process = [];
+  const document = migrateLegacy(content);
+  assert.equal(document.pages.process.slug, 'process.html');
+  assert.equal(document.pages.process.status, 'hidden');
+  assert.deepEqual(document.pages.process.sections, []);
+});

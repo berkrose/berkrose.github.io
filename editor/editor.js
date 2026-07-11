@@ -27,6 +27,7 @@
   var suppressUnloadWarning = false;
 
   var isHomePage = null; // resolved on init
+  var currentPageId = null;
 
   // Undo/redo: JSON snapshots of the whole draft. lastSaved is the snapshot of
   // the most recently saved state, used to derive the "unsaved" flag truthfully
@@ -2355,6 +2356,153 @@
     return button;
   }
 
+  function sitePages() {
+    var pages = {
+      about: { id: 'about', title: 'About', slug: 'index.html', builtin: true, status: 'published' },
+      projects: { id: 'projects', title: 'Projects', slug: 'projects.html', builtin: true, status: 'published' }
+    };
+    Object.keys(draft.sitePages || {}).forEach(function (id) {
+      pages[id] = Object.assign({ id: id, status: 'published' }, draft.sitePages[id]);
+    });
+    return pages;
+  }
+
+  function pageUrl(page) {
+    var homeId = draft.siteSettings && draft.siteSettings.homePageId || 'about';
+    if (page.id === homeId) return '/index.html';
+    if (page.id === 'about' && homeId !== 'about') return '/about.html';
+    return '/' + page.slug;
+  }
+
+  function uniquePageSlug(title, excludeId) {
+    var base = String(title || 'page').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'page';
+    var slug = base + '.html';
+    var number = 2;
+    var pages = sitePages();
+    function used(candidate) {
+      return Object.keys(pages).some(function (id) { return id !== excludeId && pages[id].slug === candidate; });
+    }
+    while (used(slug) || slug === 'index.html' || slug === 'about.html' || slug === 'projects.html') {
+      slug = base + '-' + number + '.html'; number += 1;
+    }
+    return slug;
+  }
+
+  function addPage() {
+    var title = prompt('Name for the new page:');
+    if (title === null || !title.trim()) return;
+    title = title.trim();
+    pushHistory();
+    draft.sitePages = draft.sitePages || {};
+    draft.siteNavigation = draft.siteNavigation || ['projects', 'about'];
+    draft.sections = draft.sections || {};
+    var id = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'page';
+    var baseId = id, number = 2;
+    while (sitePages()[id]) { id = baseId + '-' + number; number += 1; }
+    var slug = uniquePageSlug(title);
+    draft.sitePages[id] = { id: id, title: title, slug: slug, status: 'published' };
+    draft.siteNavigation.push(id);
+    draft.sections[id] = [];
+    markUnsaved();
+    save({ silent: true }).then(function () { location.href = '/' + slug; });
+  }
+
+  function duplicatePage(id) {
+    var source = sitePages()[id];
+    if (!source || source.builtin) return;
+    pushHistory();
+    var title = source.title + ' Copy';
+    var newId = uniquePageSlug(title).replace(/\.html$/, '');
+    var slug = uniquePageSlug(title);
+    draft.sitePages[newId] = { id: newId, title: title, slug: slug, status: 'hidden' };
+    draft.siteNavigation = draft.siteNavigation || ['projects', 'about'];
+    draft.siteNavigation.push(newId);
+    draft.sections = draft.sections || {};
+    draft.sectionData = draft.sectionData || {};
+    draft.sections[newId] = [];
+    (draft.sections[id] || []).forEach(function (entry) {
+      if (entry.builtin) return;
+      var data = draft.sectionData[entry.id];
+      if (!data) return;
+      var newSectionId = uniqueSectionId(data.type || 'text');
+      draft.sectionData[newSectionId] = cloneJson(data);
+      copyScopedStyles('sectionData.' + entry.id + '.', 'sectionData.' + newSectionId + '.');
+      draft.sections[newId].push({ id: newSectionId, type: data.type || 'text' });
+    });
+    markUnsaved(); renderWorkspacePanel('pages'); toast('Page duplicated as hidden', 'ok');
+  }
+
+  function deletePage(id) {
+    var page = sitePages()[id];
+    if (!page || page.builtin || !confirm('Delete the page "' + page.title + '"?')) return;
+    pushHistory();
+    (draft.sections && draft.sections[id] || []).forEach(function (entry) {
+      if (draft.sectionData) delete draft.sectionData[entry.id];
+    });
+    if (draft.sections) delete draft.sections[id];
+    delete draft.sitePages[id];
+    draft.siteNavigation = (draft.siteNavigation || []).filter(function (pageId) { return pageId !== id; });
+    if (draft.siteSettings && draft.siteSettings.homePageId === id) draft.siteSettings.homePageId = 'about';
+    markUnsaved(); renderWorkspacePanel('pages');
+  }
+
+  function openPageSettings(id) {
+    var page = sitePages()[id];
+    if (!page) return;
+    var backdrop = make('div', 'ed-backdrop');
+    var modal = make('div', 'ed-modal ed-modal-sm');
+    var head = make('div', 'ed-modal-head'); head.appendChild(make('h3', '', 'Page settings'));
+    var close = make('button', 'ed-modal-close', '×'); close.type = 'button'; close.addEventListener('click', function () { backdrop.remove(); }); head.appendChild(close); modal.appendChild(head);
+    var form = make('div', 'ed-details-form');
+    var titleLabel = make('label', 'ed-setting-field'); titleLabel.appendChild(make('span', '', 'Page title'));
+    var titleInput = document.createElement('input'); titleInput.type = 'text'; titleInput.value = page.title; titleInput.setAttribute('data-editor', ''); titleLabel.appendChild(titleInput); form.appendChild(titleLabel);
+    var slugLabel = make('label', 'ed-setting-field'); slugLabel.appendChild(make('span', '', 'Page URL'));
+    var slugInput = document.createElement('input'); slugInput.type = 'text'; slugInput.value = page.slug; slugInput.disabled = !!page.builtin; slugInput.setAttribute('data-editor', ''); slugLabel.appendChild(slugInput); form.appendChild(slugLabel);
+    var hiddenLabel = make('label', 'ed-check-label'); var hidden = document.createElement('input'); hidden.type = 'checkbox'; hidden.checked = page.status === 'hidden'; hidden.setAttribute('data-editor', ''); hiddenLabel.appendChild(hidden); hiddenLabel.appendChild(make('span', '', 'Hide from navigation')); form.appendChild(hiddenLabel);
+    var homeLabel = make('label', 'ed-check-label'); var home = document.createElement('input'); home.type = 'checkbox'; home.checked = (draft.siteSettings && draft.siteSettings.homePageId || 'about') === id; home.setAttribute('data-editor', ''); homeLabel.appendChild(home); homeLabel.appendChild(make('span', '', 'Use as home page')); form.appendChild(homeLabel);
+    modal.appendChild(form);
+    var foot = make('div', 'ed-modal-foot');
+    if (!page.builtin) {
+      var duplicate = make('button', 'ed-btn ed-btn-ghost', 'Duplicate'); duplicate.type = 'button'; duplicate.addEventListener('click', function () { backdrop.remove(); duplicatePage(id); }); foot.appendChild(duplicate);
+      var remove = make('button', 'ed-btn ed-btn-ghost', 'Delete'); remove.type = 'button'; remove.addEventListener('click', function () { backdrop.remove(); deletePage(id); }); foot.appendChild(remove);
+    }
+    var savePage = make('button', 'ed-btn ed-btn-save', 'Save page'); savePage.type = 'button';
+    savePage.addEventListener('click', function () {
+      if (!titleInput.value.trim()) return;
+      pushHistory(); draft.sitePages = draft.sitePages || {};
+      var target = draft.sitePages[id] || cloneJson(page);
+      target.title = titleInput.value.trim(); target.status = hidden.checked ? 'hidden' : 'published';
+      if (!page.builtin) target.slug = uniquePageSlug(slugInput.value.replace(/\.html$/, ''), id);
+      draft.sitePages[id] = target;
+      draft.siteSettings = draft.siteSettings || {}; if (home.checked) draft.siteSettings.homePageId = id;
+      else if (draft.siteSettings.homePageId === id) draft.siteSettings.homePageId = 'about';
+      markUnsaved(); backdrop.remove(); renderWorkspacePanel('pages');
+    });
+    foot.appendChild(savePage); modal.appendChild(foot); backdrop.appendChild(modal); document.body.appendChild(backdrop);
+  }
+
+  function moveNavigationItem(id, direction) {
+    draft.siteNavigation = draft.siteNavigation || ['projects', 'about'];
+    var index = draft.siteNavigation.indexOf(id), target = index + direction;
+    if (index < 0 || target < 0 || target >= draft.siteNavigation.length) return;
+    pushHistory(); var item = draft.siteNavigation[index]; draft.siteNavigation[index] = draft.siteNavigation[target]; draft.siteNavigation[target] = item;
+    markUnsaved(); renderWorkspacePanel('pages');
+  }
+
+  function addExternalNavigation() {
+    var label = prompt('Navigation label:'); if (label === null || !label.trim()) return;
+    var url = prompt('Web address:'); if (url === null || !url.trim()) return;
+    url = url.trim(); if (!/^(https?:\/\/|mailto:)/i.test(url)) url = 'https://' + url;
+    pushHistory(); draft.siteNavLinks = draft.siteNavLinks || [];
+    draft.siteNavLinks.push({ id: 'external-' + Date.now(), label: label.trim(), url: url });
+    markUnsaved(); renderWorkspacePanel('pages');
+  }
+
+  function deleteExternalNavigation(id) {
+    pushHistory(); draft.siteNavLinks = (draft.siteNavLinks || []).filter(function (link) { return link.id !== id; });
+    markUnsaved(); renderWorkspacePanel('pages');
+  }
+
   function renderWorkspacePanel(tabName) {
     if (!sidebarPanel) return;
     activeWorkspaceTab = tabName;
@@ -2375,16 +2523,30 @@
 
     if (tabName === 'pages') {
       var pageList = make('div', 'ed-workspace-list');
-      [['About', '/index.html'], ['Projects', '/projects.html']].forEach(function (item) {
-        var link = make('a', 'ed-page-row' + ((isHomePage ? item[0] === 'Projects' : item[0] === 'About') ? ' ed-active' : ''));
-        link.href = item[1];
-        link.appendChild(make('span', 'ed-page-icon', item[0].charAt(0)));
-        link.appendChild(make('span', '', item[0]));
-        if (item[0] === 'About') link.appendChild(make('span', 'ed-page-home', 'Home'));
-        pageList.appendChild(link);
+      var pages = sitePages();
+      var order = (draft.siteNavigation || ['projects', 'about']).slice();
+      Object.keys(pages).forEach(function (id) { if (order.indexOf(id) === -1) order.push(id); });
+      order.forEach(function (id) {
+        var page = pages[id]; if (!page) return;
+        var row = make('div', 'ed-page-row' + (currentPageId === id ? ' ed-active' : ''));
+        var link = make('a', 'ed-page-select'); link.href = pageUrl(page);
+        link.appendChild(make('span', 'ed-page-icon', page.title.charAt(0).toUpperCase())); link.appendChild(make('span', '', page.title));
+        if ((draft.siteSettings && draft.siteSettings.homePageId || 'about') === id) link.appendChild(make('span', 'ed-page-home', 'Home'));
+        if (page.status === 'hidden') link.appendChild(make('span', 'ed-page-home', 'Hidden'));
+        var up = make('button', 'ed-layer-action', '↑'); up.type = 'button'; up.title = 'Move navigation item up'; up.disabled = order.indexOf(id) === 0; up.addEventListener('click', function () { moveNavigationItem(id, -1); });
+        var down = make('button', 'ed-layer-action', '↓'); down.type = 'button'; down.title = 'Move navigation item down'; down.disabled = order.indexOf(id) === order.length - 1; down.addEventListener('click', function () { moveNavigationItem(id, 1); });
+        var settings = make('button', 'ed-layer-action', '⚙'); settings.type = 'button'; settings.title = 'Page settings'; settings.addEventListener('click', function () { openPageSettings(id); });
+        row.appendChild(link); row.appendChild(up); row.appendChild(down); row.appendChild(settings); pageList.appendChild(row);
+      });
+      (draft.siteNavLinks || []).forEach(function (external) {
+        var row = make('div', 'ed-page-row');
+        var label = make('div', 'ed-page-select'); label.appendChild(make('span', 'ed-page-icon', '↗')); label.appendChild(make('span', '', external.label)); label.appendChild(make('span', 'ed-page-home', 'External'));
+        var remove = make('button', 'ed-layer-action', '×'); remove.type = 'button'; remove.title = 'Remove navigation link'; remove.addEventListener('click', function () { deleteExternalNavigation(external.id); });
+        row.appendChild(label); row.appendChild(remove); pageList.appendChild(row);
       });
       sidebarPanel.appendChild(pageList);
-      sidebarPanel.appendChild(make('p', 'ed-workspace-note', 'Page creation and navigation management arrive in Milestone 7.'));
+      sidebarPanel.appendChild(workspaceButton('Add page', 'Create another static page', addPage, 'ed-workspace-command-primary'));
+      sidebarPanel.appendChild(workspaceButton('Add external link', 'Link navigation to another website', addExternalNavigation));
       return;
     }
 
@@ -2610,7 +2772,9 @@
   // ── Init ──────────────────────────────────────────────────────────────────
   function init() {
     isHomePage = !!document.getElementById('projects-container');
-    pageKey = isHomePage ? 'home' : 'about';
+    var pageMain = document.querySelector('main[data-page-id]');
+    currentPageId = pageMain && pageMain.dataset.pageId ? pageMain.dataset.pageId : (isHomePage ? 'projects' : 'about');
+    pageKey = currentPageId === 'projects' ? 'home' : currentPageId;
     lastSaved = snapshot();
     buildWorkspace();
     buildToolbar();

@@ -28,6 +28,15 @@ On a phone, tap a workspace tab to open its drawer and tap **Close** when finish
 Use **Preview** in the top bar to hide all editing controls and see the page as a
 visitor will. Press **Esc** or **Exit preview** to return to editing.
 
+### Pages and navigation
+The Pages tab can add static pages and reorder them in navigation. Use a page's **⚙**
+button to rename it, change its URL, hide it from navigation, duplicate or delete a
+custom page, or make it the home page. About and Projects are protected built-in pages.
+
+Use **Add external link** to place a secure web or email link in the desktop, mobile,
+and footer navigation. Custom page files are generated automatically when the editor
+saves; deleting a page safely removes its generated file.
+
 (If double-clicking shows a security warning the first time: right-click the file →
 **Open** → **Open**. macOS only asks once.)
 

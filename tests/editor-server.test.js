@@ -188,6 +188,29 @@ test('serves a validated structured document to the authorized editor', async ()
   assert.deepEqual(Object.keys(body.document.pages).sort(), ['about', 'projects']);
 });
 
+test('generates and removes validated custom static pages', async () => {
+  const withPage = validContent('Custom page test');
+  withPage.sitePages = {
+    process: { id: 'process', title: 'Process', slug: 'process.html', status: 'published' },
+  };
+  withPage.sections = { process: [] };
+  withPage.siteNavigation = ['projects', 'about', 'process'];
+  const createResponse = await fetch(baseUrl + '/api/content', {
+    method: 'POST', headers: apiHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify(withPage),
+  });
+  assert.equal(createResponse.status, 200);
+  assert.equal(fs.existsSync(path.join(fixtureRoot, 'process.html')), true);
+  const pageSource = fs.readFileSync(path.join(fixtureRoot, 'process.html'), 'utf8');
+  assert.match(pageSource, /data-page-id="process"/);
+  assert.equal((await fetch(baseUrl + '/process.html')).status, 200);
+
+  const removeResponse = await fetch(baseUrl + '/api/content', {
+    method: 'POST', headers: apiHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify(validContent('Removed custom page')),
+  });
+  assert.equal(removeResponse.status, 200);
+  assert.equal(fs.existsSync(path.join(fixtureRoot, 'process.html')), false);
+});
+
 test('rejects incomplete content without replacing the saved document', async () => {
   const beforeSource = fs.readFileSync(path.join(fixtureRoot, 'content.js'), 'utf8');
   const response = await fetch(baseUrl + '/api/content', {

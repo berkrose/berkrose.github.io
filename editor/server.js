@@ -29,6 +29,7 @@ const RESUME_FILE = path.join(SITE_ROOT, 'assets', 'resume.pdf');
 const EDITOR_DATA_ROOT = path.join(SITE_ROOT, '.editor-data');
 const REVISIONS_ROOT = path.join(EDITOR_DATA_ROOT, 'revisions');
 const DOCUMENT_FILE = path.join(EDITOR_DATA_ROOT, 'site.json');
+const GENERATED_PAGES_FILE = path.join(EDITOR_DATA_ROOT, 'generated-pages.json');
 const SESSION_TOKEN = crypto.randomBytes(32).toString('hex');
 
 const MAX_BODY_BYTES = 25 * 1024 * 1024; // 25MB request body cap
@@ -115,6 +116,7 @@ function isPublicPath(decoded) {
     return false;
   }
   if (PUBLIC_ROOT_FILES.has(relative) || PUBLIC_EDITOR_FILES.has(relative)) return true;
+  if (/^[a-z0-9][a-z0-9-]*\.html$/.test(relative)) return true;
   return relative.startsWith('assets/');
 }
 
@@ -185,6 +187,11 @@ function contentOutput(content) {
     'const CONTENT = ' + JSON.stringify(content, null, 2) + ';\n';
 }
 
+function loadContentFile() {
+  const source = fs.readFileSync(CONTENT_FILE, 'utf8');
+  return new Function(source + '; return CONTENT;')();
+}
+
 async function writeContentAtomic(content) {
   const validationError = validateContent(content);
   if (validationError) {
@@ -226,6 +233,62 @@ function writeStructuredDocument(content) {
   fs.writeFileSync(tmp, JSON.stringify(document, null, 2), 'utf8');
   fs.renameSync(tmp, DOCUMENT_FILE);
   return document;
+}
+
+function pageHtml(page) {
+  const title = String(page.title || 'Page').replace(/[<>&"]/g, '');
+  const pageId = String(page.id || '').replace(/[^a-zA-Z0-9_-]/g, '');
+  return '<!DOCTYPE html>\n<html class="light" lang="en">\n<head>\n' +
+    '<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">\n' +
+    '<title>' + title + ' - Berkeley Skuratowicz</title>\n' +
+    '<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Inter+Tight:wght@400;500;600;700&family=Cormorant+Garamond:ital,wght@1,600&display=swap" rel="stylesheet">\n' +
+    '<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet">\n' +
+    '<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>\n' +
+    '<script src="content.js"></script><script src="content-loader.js"></script><script src="sections.js"></script>\n' +
+    '<script src="nav.js"></script><script src="lightbox.js"></script><script src="theme-config.js"></script>\n' +
+    '<style>body{background:var(--c-surface);color:#1a1c1c;font-family:var(--f-body),sans-serif}</style>\n' +
+    '</head><body class="bg-surface text-on-surface antialiased">\n' +
+    '<nav class="fixed top-0 w-full z-50 bg-white/80 backdrop-blur-md"><div class="flex justify-between items-center w-full px-8 py-6 max-w-[1920px] mx-auto">' +
+    '<a href="index.html" class="font-bold text-lg tracking-tighter text-black" data-content="nav.logo">Berkeley Skuratowicz</a>' +
+    '<div class="hidden md:flex gap-8 items-center" data-site-nav="desktop"></div>' +
+    '<div class="md:hidden relative"><button id="nav-menu-toggle" type="button" aria-label="Menu" aria-expanded="false" aria-controls="nav-menu-panel" class="flex items-center text-black"><span class="material-symbols-outlined" id="nav-menu-icon">menu</span></button>' +
+    '<div id="nav-menu-panel" data-site-nav="mobile" class="hidden absolute right-0 top-full mt-3 bg-white shadow-xl border border-zinc-100 py-2 min-w-[170px]"></div></div></div></nav>\n' +
+    '<main data-page-id="' + pageId + '" class="pt-32 pb-24 max-w-[1920px] mx-auto min-h-screen"></main>\n' +
+    '<footer class="w-full py-16 px-8 bg-surface-container-low"><div class="flex flex-col md:flex-row justify-between items-start md:items-center w-full gap-8 max-w-[1920px] mx-auto">' +
+    '<div class="font-bold text-black font-headline tracking-tighter" data-content="footer.logo">Berkeley Skuratowicz</div>' +
+    '<div data-site-nav="footer" class="flex flex-wrap gap-8"></div>' +
+    '<div class="font-label text-[11px] tracking-[0.1em] uppercase text-zinc-400" data-content="footer.copyright"></div></div></footer>\n' +
+    '</body></html>\n';
+}
+
+function generatedPages(content) {
+  const pages = content.sitePages || {};
+  const written = [];
+  fs.mkdirSync(EDITOR_DATA_ROOT, { recursive: true });
+  let previous = [];
+  try { previous = JSON.parse(fs.readFileSync(GENERATED_PAGES_FILE, 'utf8')); } catch (error) {}
+  for (const page of Object.values(pages)) {
+    if (!page || page.builtin || !/^[a-z0-9][a-z0-9-]*\.html$/.test(page.slug || '')) continue;
+    fs.writeFileSync(path.join(SITE_ROOT, page.slug), pageHtml(page), 'utf8');
+    written.push(page.slug);
+  }
+  for (const oldSlug of previous) {
+    if (!written.includes(oldSlug) && /^[a-z0-9][a-z0-9-]*\.html$/.test(oldSlug)) {
+      fs.rmSync(path.join(SITE_ROOT, oldSlug), { force: true });
+    }
+  }
+  const homeId = content.siteSettings && content.siteSettings.homePageId || 'about';
+  const aboutFile = path.join(SITE_ROOT, 'about.html');
+  if (homeId !== 'about') {
+    fs.writeFileSync(aboutFile, fs.readFileSync(path.join(SITE_ROOT, 'index.html'), 'utf8'), 'utf8');
+  } else {
+    fs.writeFileSync(aboutFile,
+      '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>Berkeley Skuratowicz</title>' +
+      '<meta http-equiv="refresh" content="0; url=index.html"><link rel="canonical" href="https://berkrose.github.io/">' +
+      '<script>window.location.replace("index.html")</script></head><body><p>This page has moved. <a href="index.html">Continue to the site</a>.</p></body></html>\n',
+      'utf8');
+  }
+  fs.writeFileSync(GENERATED_PAGES_FILE, JSON.stringify(written, null, 2), 'utf8');
 }
 
 function collectAssetManifest() {
@@ -346,6 +409,7 @@ async function handleContent(body, res) {
   }
   await writeContentAtomic(body);
   const document = writeStructuredDocument(body);
+  generatedPages(body);
   const revision = createRevision(body, { kind: 'auto' });
   sendJson(res, 200, {
     ok: true,
@@ -358,8 +422,7 @@ async function handleContent(body, res) {
 function handleStructuredDocument(res) {
   let document = readStructuredDocument();
   if (!document) {
-    const source = fs.readFileSync(CONTENT_FILE, 'utf8');
-    const content = new Function(source + '; return CONTENT;')();
+    const content = loadContentFile();
     document = writeStructuredDocument(content);
   }
   sendJson(res, 200, { document });
@@ -594,6 +657,7 @@ function handleDiscard(res) {
   } catch (e) {
     if (fs.existsSync(RESUME_FILE)) fs.unlinkSync(RESUME_FILE);
   }
+  generatedPages(loadContentFile());
   sendJson(res, 200, { ok: true });
 }
 

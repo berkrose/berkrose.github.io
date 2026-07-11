@@ -31,6 +31,8 @@
   }
 
   function pageId() {
+    var main = document.querySelector('main[data-page-id]');
+    if (main && main.dataset.pageId) return main.dataset.pageId;
     return document.getElementById('projects-container') ? 'home' : 'about';
   }
 

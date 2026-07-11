@@ -46,14 +46,11 @@ function migrateLegacy(content, previousDocument) {
     schemaVersion: SCHEMA_VERSION,
     site: {
       title: (content.nav && content.nav.logo) || 'Portfolio',
-      homePageId: 'about',
+      homePageId: (content.siteSettings && content.siteSettings.homePageId) || 'about',
       locale: 'en',
       designPresetId: 'original',
     },
-    navigation: [
-      { id: 'nav-about', label: 'About', target: { type: 'page', pageId: 'about' }, children: [] },
-      { id: 'nav-projects', label: 'Projects', target: { type: 'page', pageId: 'projects' }, children: [] },
-    ],
+    navigation: [],
     pages: {},
     sections: {},
     columns: {},
@@ -68,9 +65,13 @@ function migrateLegacy(content, previousDocument) {
   };
 
   const pageDefinitions = [
-    { id: 'about', title: 'About', slug: 'index.html', registry: 'about' },
-    { id: 'projects', title: 'Projects', slug: 'projects.html', registry: 'home' },
+    { id: 'about', title: (content.sitePages && content.sitePages.about && content.sitePages.about.title) || 'About', slug: 'index.html', registry: 'about' },
+    { id: 'projects', title: (content.sitePages && content.sitePages.projects && content.sitePages.projects.title) || 'Projects', slug: 'projects.html', registry: 'home' },
   ];
+  for (const [id, page] of Object.entries(content.sitePages || {})) {
+    if (id === 'about' || id === 'projects') continue;
+    pageDefinitions.push({ id, title: page.title || id, slug: page.slug || (id + '.html'), registry: id });
+  }
 
   for (const pageDefinition of pageDefinitions) {
     const orderedSections = [];
@@ -106,10 +107,19 @@ function migrateLegacy(content, previousDocument) {
       id: pageDefinition.id,
       title: pageDefinition.title,
       slug: pageDefinition.slug,
-      status: 'published',
+      status: (content.sitePages && content.sitePages[pageDefinition.id] && content.sitePages[pageDefinition.id].status) || 'published',
       seo: clone((previous && previous.pages[pageDefinition.id] && previous.pages[pageDefinition.id].seo) || {}),
       sections: orderedSections,
     };
+  }
+
+  const pageMap = document.pages;
+  const navigationOrder = Array.isArray(content.siteNavigation) ? content.siteNavigation : ['projects', 'about'];
+  document.navigation = navigationOrder.filter((id) => pageMap[id]).map((id) => ({
+    id: 'nav-' + id, label: pageMap[id].title, target: { type: 'page', pageId: id }, children: [],
+  }));
+  for (const link of content.siteNavLinks || []) {
+    document.navigation.push({ id: link.id, label: link.label, target: { type: 'url', url: link.url }, children: [] });
   }
 
   for (const [key, project] of Object.entries(content.projects || {})) {

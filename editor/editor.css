@@ -138,6 +138,8 @@ body.ed-shell-active > nav { left: 280px !important; top: 56px !important; width
   padding: 9px 10px; border: 1px solid #dedede; background: #fff; color: #222;
   text-decoration: none; text-align: left; cursor: pointer; font-family: var(--ed-font);
 }
+.ed-page-row { padding: 0; }
+.ed-page-select { min-width: 0; flex: 1; display: flex; align-items: center; gap: 10px; padding: 9px 10px; color: inherit; text-decoration: none; }
 .ed-page-row:hover, .ed-layer-row:hover, .ed-workspace-command:hover { border-color: #aaa; background: #fff; }
 .ed-page-row.ed-active, .ed-layer-row.ed-active { border-color: var(--ed-red); box-shadow: inset 3px 0 0 var(--ed-red); }
 .ed-page-icon {

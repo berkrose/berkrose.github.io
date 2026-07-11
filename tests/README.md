@@ -43,6 +43,10 @@ section styling, no mobile overflow, and complete undo recovery. Milestone 6 che
 rendered the expanded block library, repeated-item controls, and project metadata with
 all test mutations undone and no console errors.
 
+Milestone 7 integration checks generate and remove custom static pages in an isolated
+fixture. Browser checks verify dynamic desktop, phone, and footer navigation plus the
+Pages settings interface without changing portfolio content.
+
 At baseline creation:
 
 - No horizontal overflow was detected at the mobile viewport.
