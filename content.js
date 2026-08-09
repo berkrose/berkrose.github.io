@@ -7,7 +7,7 @@ const CONTENT = {
   },
   "hero": {
     "label": "Selected Works",
-    "count": "08 Projects",
+    "count": "07 Projects",
     "heading": "SELECTED<br>WORKS.",
     "divider": "Engineering & Design / 2020–2026"
   },
@@ -47,7 +47,7 @@ const CONTENT = {
         "Manufacturing",
         "Capstone"
       ],
-      "title": "Carbon Fiber Mountain Bike",
+      "title": "Wooden Mountain Bike",
       "description": "A full-suspension mountain bike built from recycled wood and carbon fiber composite, designed for Celilo Cycles as a six-month senior capstone project.",
       "institution": "Oregon State University",
       "year": "2022",
@@ -76,7 +76,7 @@ const CONTENT = {
         "Community",
         "PlayfulSF"
       ],
-      "title": "Interlock Building Blocks",
+      "title": "Building Blocks the Size of You",
       "description": "A large-scale interlocking building system designed for PlayfulSF to bring unstructured, collaborative play to urban spaces.",
       "institution": "PlayfulSF",
       "year": "2025",
@@ -161,31 +161,8 @@ const CONTENT = {
         "During my internship at Blue Marble, I designed the housing and motor mount for a tumbler assembly, ensuring the design met specific guidelines and measurements. After completing the design, I created a prototype using a stereolithography (SLA) 3D printer."
       ]
     },
-    "cloudair": {
-      "number": "07",
-      "tags": [
-        "Product Design",
-        "Consumer Electronics"
-      ],
-      "title": "CloudAir One",
-      "description": "A combination air purifier and dehumidifier with a whimsical cloud form and transparent water container.",
-      "institution": "SF State University",
-      "year": "2024",
-      "imageAlt": "CloudAir One - whimsical cloud-shaped air purifier and dehumidifier with transparent water base",
-      "imageFit": "object-contain",
-      "images": [
-        "assets/images/cloudair/main.png",
-        "assets/images/cloudair/cloudair-01.png",
-        "assets/images/cloudair/cloudair-02.png",
-        "assets/images/cloudair/cloudair-03.png"
-      ],
-      "readMore": [
-        "The CloudAir One is a combination air purifier and dehumidifier designed with a whimsical cloud form. Its transparent water container lets users watch the dehumidification process in action as droplets collect and fall.",
-        "Air is drawn in through the top, purified through a HEPA filter, then dehumidified and released through the base of the cloud. The top cloud section fits easily into the base, making it simple to remove and empty the water."
-      ]
-    },
     "createaplant": {
-      "number": "08",
+      "number": "07",
       "tags": [
         "Product Design",
         "Educational Toy",
