@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Berkeley Skuratowicz Makerspace</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800&display=swap">
+<style>
+/* Layout: one short scroll. Intro, the three makerspaces, a grid of projects, contact. Square corners, tonal bands, one accent. */
+:root{
+  --bg:#f9f9f9; --bg-alt:#f1f1f2; --card:#ffffff;
+  --fg:#1a1c1c; --ink:#000000; --muted:#5b5557;
+  --accent:#bb0018;
+  --font:"Inter Tight","Helvetica Neue",Arial,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#121313; --bg-alt:#1a1b1b; --card:#202121; --fg:#e7e5e5; --ink:#ffffff; --muted:#a7a0a1; --accent:#ff5a5f; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#121313; --bg-alt:#1a1b1b; --card:#202121; --fg:#e7e5e5; --ink:#ffffff; --muted:#a7a0a1; --accent:#ff5a5f; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--font);font-size:17px;line-height:1.6;-webkit-font-smoothing:antialiased}
+img{display:block;max-width:100%;height:auto}
+a{color:inherit}
+a:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.wrap{max-width:1100px;margin:0 auto;padding-left:max(20px,env(safe-area-inset-left,0px));padding-right:max(20px,env(safe-area-inset-right,0px))}
+.band{padding-block:clamp(48px,8vw,96px)}
+.alt{background:var(--bg-alt)}
+.label{font-size:.72rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.red{color:var(--accent)}
+h1,h2,h3,h4{margin:0;color:var(--ink);text-wrap:balance}
+h2{font-size:clamp(1.9rem,4.2vw,2.8rem);font-weight:800;letter-spacing:-.03em;line-height:1.05}
+p{margin:0;max-width:62ch}
+.head{display:grid;gap:12px;margin-bottom:clamp(32px,5vw,52px)}
+
+.hero{padding-block:clamp(36px,6vw,72px)}
+.hero-grid{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:clamp(28px,5vw,64px);align-items:center}
+.hero h1{font-size:clamp(2.4rem,6.4vw,4.6rem);font-weight:800;letter-spacing:-.045em;line-height:.96;margin-top:18px}
+.hero p{margin-top:22px;font-size:clamp(1.05rem,1.5vw,1.18rem)}
+.hero img{width:100%;aspect-ratio:4/5;object-fit:cover;object-position:60% 30%}
+.facts{display:flex;flex-wrap:wrap;gap:8px;margin-top:26px}
+.facts span{background:var(--card);padding:6px 10px;font-size:.82rem}
+
+.spaces{display:grid;gap:2px}
+.space{display:grid;grid-template-columns:minmax(0,4fr) minmax(0,5fr) minmax(0,3fr);gap:clamp(18px,3vw,40px);background:var(--card);padding:clamp(20px,3vw,32px);align-items:start}
+.space .when{display:grid;gap:6px}
+.space h3{font-size:1.35rem;letter-spacing:-.02em}
+.space .role{font-size:.88rem;color:var(--muted)}
+.space ul{margin:0;padding-left:1.1em;display:grid;gap:5px;font-size:.95rem;min-width:0}
+.space ul li::marker{color:var(--accent)}
+.space img{width:100%;aspect-ratio:4/3;object-fit:cover;cursor:zoom-in}
+
+.grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:clamp(22px,3vw,32px) clamp(14px,2vw,22px)}
+.card{display:grid;gap:10px;align-content:start;min-width:0}
+.card .ph{aspect-ratio:1/1;overflow:hidden;background:var(--card)}
+.card .ph img{width:100%;height:100%;object-fit:cover;cursor:zoom-in}
+.card .ph.contain img{object-fit:contain;background:#fff}
+.card h4{font-size:1.02rem;font-weight:700}
+.card p{font-size:.9rem;color:var(--muted)}
+
+.contact{background:var(--ink);color:var(--bg)}
+.contact h2{color:var(--bg)}
+.contact .label{color:color-mix(in srgb,var(--bg) 65%,transparent)}
+.cgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px;margin-top:32px}
+.cgrid div{display:grid;gap:6px;min-width:0}
+.cgrid .v{font-size:1.08rem;font-weight:600;overflow-wrap:anywhere;user-select:all;color:var(--bg)}
+.copy{justify-self:start;background:transparent;border:1px solid color-mix(in srgb,var(--bg) 40%,transparent);color:var(--bg);font:500 .75rem var(--font);padding:5px 10px;cursor:pointer}
+
+dialog{border:0;padding:0;background:transparent;max-width:min(94vw,1300px);max-height:92vh}
+dialog::backdrop{background:rgba(10,10,10,.88)}
+dialog img{max-height:84vh;width:auto;margin:0 auto}
+dialog p{color:#eee;font-size:.85rem;margin:8px auto 0;text-align:center}
+dialog button{position:fixed;top:calc(env(safe-area-inset-top,0px) + 14px);right:calc(env(safe-area-inset-right,0px) + 14px);background:#fff;color:#000;border:0;font:600 .85rem var(--font);padding:8px 12px;cursor:pointer}
+
+@media (max-width:900px){
+  .hero-grid{grid-template-columns:minmax(0,1fr)}
+  .hero img{aspect-ratio:4/3}
+  .space{grid-template-columns:minmax(0,1fr)}
+  .grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .cgrid{grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width:420px){.grid{grid-template-columns:minmax(0,1fr)}}
+</style>
+</head>
+<body>
+
+
+<main>
+  <section class="hero">
+    <div class="wrap hero-grid">
+      <div>
+        <h1>Berkeley Skuratowicz</h1>
+        <p>I designed and run the Mountain View Public Library makerspace. Before that I taught 3D printing, laser cutting, and CNC at Talent Maker City, and co-led the 3D printing club at Oregon State.</p>
+        <p>Below are the makerspaces I've worked in and some of the things I've made.</p>
+        <div class="facts">
+          <span>B.S. Mechanical &amp; Manufacturing Engineering, Oregon State</span>
+          <span>M.A. Product Design, SF State</span>
+          <span>Mountain View, CA</span>
+        </div>
+      </div>
+      <img src="img/headshot.jpg" alt="Portrait of Berkeley Skuratowicz outdoors" data-cap="Berkeley Skuratowicz" style="object-position:50% 35%">
+    </div>
+  </section>
+
+  <section class="band alt" aria-labelledby="spaces-h">
+    <div class="wrap">
+      <div class="head"><span class="label red">Makerspaces</span><h2 id="spaces-h">Spaces I've run and taught in</h2></div>
+      <div class="spaces">
+        <div class="space">
+          <div class="when"><span class="label red">2026 to now</span><h3>Mountain View Public Library</h3><span class="role">Makerspace Coordinator</span></div>
+          <ul>
+            <li>Planned and launched the makerspace, including layout, equipment, rules, and operations</li>
+            <li>Wrote standard operating procedures for all equipment</li>
+            <li>Developed online certification courses for 3D printing and Cricut</li>
+            <li>Teach classes and tool trainings for adults and teens</li>
+            <li>Led 15+ staff trainings</li>
+            <li>Established maintenance routines and checklists for 3D printers and Cricuts</li>
+            <li>Created makerspace web content, including rules and equipment information</li>
+          </ul>
+          <div style="display:grid;gap:12px"><img src="img/library-berkeley.jpg" alt="Berkeley in the Mountain View Public Library makerspace in front of a Prusa MK4 and labeled supply bins" data-cap="In the Mountain View Public Library makerspace." loading="lazy" style="object-position:40% 40%">
+          <div class="label" style="line-height:1.8">3D printers (Bambu, Prusa, Creality) · 3D scanner · Cricut cutters and heat press · micro:bit · Snap Circuits · 3D pens</div></div>
+        </div>
+        <div class="space">
+          <div class="when"><span class="label red">2023 to 2024</span><h3>Talent Maker City</h3><span class="role">Engineer and Instructor · Technology lead</span></div>
+          <ul>
+            <li>Led the technology section, including equipment maintenance, purchasing, and class planning</li>
+            <li>Ran workshops and certifications on laser cutters, CNC routers, and 3D printers for students, K-12 educators, and community members</li>
+            <li>Wrote curriculum for laser cutting, 3D printing, CNC, and educational drones</li>
+            <li>Trained juvenile detention facility staff on the laser cutter and wood CNC machine to support CTE programs for students</li>
+            <li>Taught robotics and 3D printing to elementary and middle school students, including summer camps for students from underserved communities, using Sphero indi, VEX IQ, and Sphero BOLT</li>
+          </ul>
+          <img src="img/tmc-berkeley.jpg" alt="Berkeley next to Prusa 3D printers at Talent Maker City" data-cap="With the 3D printers at Talent Maker City." loading="lazy">
+        </div>
+        <div class="space">
+          <div class="when"><span class="label red">At Oregon State</span><h3>OSU 3D Printing Club</h3><span class="role">Co-lead</span></div>
+          <ul>
+            <li>Partnered with the College of Engineering to convert the club into the engineering school's 3D printing makerspace and expand its printer fleet</li>
+            <li>Developed certification training and certified student users</li>
+            <li>Set up a post-processing station and print logging system</li>
+            <li>Organized events, including a 3D printed car race</li>
+          </ul>
+          <img src="img/osu-berkeley.jpg" alt="Berkeley in graduation cap and gown in front of the OSU 3D printing space printer rack" data-cap="Graduation day at the OSU 3D printing space." loading="lazy">
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" aria-labelledby="proj-h">
+    <div class="wrap">
+      <div class="head"><span class="label red">Projects</span><h2 id="proj-h">Things I've made</h2></div>
+      <div class="grid">
+        <div class="card"><div class="ph"><img src="img/letters-form.jpg" alt="Letter molds reading 109 Talent Ave mounted on concrete formwork" data-cap="Letter molds on the formwork before the pour." loading="lazy"></div><span class="label">Talent Maker City</span><h4>Concrete address letters</h4><p>Developed 3D printed cores with a cast silicone skin to form address lettering in the concrete wall of Talent Maker City's new building.</p></div>
+        <div class="card"><div class="ph"><img src="img/nutrisense-render.jpg" alt="Render of the Nutrisense unit next to a hydroponic garden" data-cap="Nutrisense (render)." loading="lazy"></div><span class="label">SF State thesis</span><h4>Nutrisense</h4><p>Master's thesis: an automated water and nutrient dosing add-on for home hydroponic gardens, built with a Raspberry Pi, sensors, and pumps.</p></div>
+        <div class="card"><div class="ph"><img src="img/bike-forest.jpg" alt="Wood and carbon fiber mountain bike" data-cap="Capstone mountain bike, wood and carbon fiber." loading="lazy" style="object-position:50% 70%"></div><span class="label">OSU capstone</span><h4>Wooden mountain bike</h4><p>Capstone team project: a full-suspension bike in recycled wood and carbon fiber. Defined the frame geometry and built early prototypes.</p></div>
+        <div class="card"><div class="ph"><img src="img/ceramics.jpg" alt="Three 3D printed ceramics tool prototypes" data-cap="Prototype rounds of the plate throwing tool." loading="lazy"></div><span class="label">Talent Maker City</span><h4>Ceramics plate tool</h4><p>Designed a 3D printed tool to simplify throwing plates on the pottery wheel, refined over five-plus prototype rounds.</p></div>
+        <div class="card"><div class="ph"><img src="img/taps-one.jpg" alt="3D printed tap handle with brass insert" data-cap="Printed tap handle with a heat-set brass insert." loading="lazy"></div><span class="label">Local winery</span><h4>Tap handles</h4><p>Designed and 3D printed custom tap handles with heat-set brass inserts for a local winery.</p></div>
+        <div class="card"><div class="ph"><img src="img/cuttingboard-final.jpg" alt="Shaper Origin handheld CNC router on an end grain cutting board" data-cap="Routing the end grain cutting board with a Shaper Origin." loading="lazy"></div><span class="label">Talent Maker City</span><h4>End grain cutting board</h4><p>Built an end grain cutting board and routed it with a Shaper Origin handheld CNC.</p></div>
+        <div class="card"><div class="ph"><img src="img/cabinet.jpg" alt="Rolling plywood cabinet with slot and tab joints" data-cap="Rolling cabinet for a Shaper Origin." loading="lazy"></div><span class="label">Talent Maker City</span><h4>Shaper Origin cabinet</h4><p>Drafted plans, CNC cut, and assembled a slotted plywood cabinet for a Shaper Origin for a partner organization.</p></div>
+        <div class="card"><div class="ph"><img src="img/lulzbot.jpg" alt="LulzBot TAZ 3D printer on a garage workbench" data-cap="My LulzBot TAZ after the rebuild." loading="lazy"></div><span class="label">Personal</span><h4>LulzBot TAZ rebuild</h4><p>Restored a non-working 3D printer by disassembling and rebuilding the extruder assembly.</p></div>
+        <div class="card"><div class="ph"><img src="img/tumbler-print.jpg" alt="SLA printed rock tumbler motor mount" data-cap="SLA prototype of the rock tumbler motor mount." loading="lazy"></div><span class="label">Blue Marble internship</span><h4>Rock tumbler motor mount</h4><p>Designed a rock tumbler motor mount and housing at Blue Marble. The SLA prototype fit on the first print.</p></div>
+        <div class="card"><div class="ph contain"><img src="img/cupholder-cad.jpg" alt="SolidWorks model of a wheelchair cupholder" data-cap="Recreated wheelchair cupholder in SolidWorks." loading="lazy"></div><span class="label">Wheelchair workshop</span><h4>Wheelchair cupholder</h4><p>Reverse engineered a discontinued wheelchair cupholder in SolidWorks, improved it based on user feedback, and printed it in carbon fiber PLA.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band contact" aria-labelledby="c-h">
+    <div class="wrap">
+      <span class="label">Contact</span>
+      <h2 id="c-h" style="margin-top:12px">Thanks for looking.</h2>
+      <div class="cgrid">
+        <div><span class="label">Email</span><span class="v" id="em">berkrose@gmail.com</span><button class="copy" type="button" data-copy="em">Copy</button></div>
+        <div><span class="label">Phone</span><span class="v" id="ph">541-816-8595</span><button class="copy" type="button" data-copy="ph">Copy</button></div>
+        <div><span class="label">LinkedIn</span><a class="v" href="https://www.linkedin.com/in/berkeley-skuratowicz" target="_blank" rel="noopener">linkedin.com/in/berkeley-skuratowicz</a></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<dialog id="lb" aria-label="Enlarged photo"><button type="button" id="lbx">Close</button><img id="lbi" alt=""><p id="lbc"></p></dialog>
+<script>
+(function(){
+  var lb=document.getElementById('lb'),li=document.getElementById('lbi'),lc=document.getElementById('lbc');
+  document.addEventListener('click',function(e){
+    var t=e.target;
+    if(t.tagName==='IMG'&&t.closest('main')){li.src=t.currentSrc||t.src;li.alt=t.alt;lc.textContent=t.getAttribute('data-cap')||t.alt;if(lb.showModal)lb.showModal()}
+    if(t.id==='lbx'||t===lb)lb.close();
+    var c=t.getAttribute&&t.getAttribute('data-copy');
+    if(c){var x=document.getElementById(c).textContent;try{navigator.clipboard.writeText(x).then(function(){t.textContent='Copied'},function(){sel(c)})}catch(_){sel(c)}}
+  });
+  function sel(id){var r=document.createRange();r.selectNodeContents(document.getElementById(id));var s=getSelection();s.removeAllRanges();s.addRange(r)}
+})();
+</script>
+
+</body>
+</html>
